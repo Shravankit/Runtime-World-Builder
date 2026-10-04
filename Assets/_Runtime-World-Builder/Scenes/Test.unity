@@ -392,6 +392,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5617c9b84b8348847ba0c6287bce8429, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  library: {fileID: 11400000, guid: a8bcf8abecd8b624b82e8d989eb134f9, type: 2}
   heightmap: {fileID: 2800000, guid: b626dcc9037afed469d12c3e6f0fc042, type: 3}
   size: {x: 200, y: 200}
   heightMeters: 50
@@ -401,6 +402,12 @@ MonoBehaviour:
   invert: 0
   showPredictedHeight: 1
   lift: 0.3
+  testerPanelRect:
+    serializedVersion: 2
+    x: 10
+    y: 10
+    width: 320
+    height: 400
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
