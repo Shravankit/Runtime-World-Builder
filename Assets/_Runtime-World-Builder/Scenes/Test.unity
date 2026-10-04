@@ -378,6 +378,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   settings: {fileID: 11400000, guid: ceef4208b0cd9e546a408b4e364accd2, type: 2}
+  library: {fileID: 11400000, guid: a8bcf8abecd8b624b82e8d989eb134f9, type: 2}
+  slot: slot1
 --- !u!114 &2064476716
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -395,8 +397,10 @@ MonoBehaviour:
   heightMeters: 50
   baseY: 0
   blend: 0
-  edgeFalloff: 0.15
+  edgeFalloff: 0.5
   invert: 0
+  showPredictedHeight: 1
+  lift: 0.3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

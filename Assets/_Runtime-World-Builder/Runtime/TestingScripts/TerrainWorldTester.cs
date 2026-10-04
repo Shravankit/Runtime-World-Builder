@@ -1,5 +1,7 @@
 using RuntimeWorldBuilder.Core.Service;
+using RuntimeWorldBuilder.Data;
 using RuntimeWorldBuilder.Runtime.World;
+using RuntimeWorldBuilder.SO.HeightMap;
 using RuntimeWorldBuilder.SO.Settings;
 using UnityEngine;
 
@@ -8,6 +10,9 @@ namespace RuntimeWorldBuilder.Runtime.Testing
     public class TerrainWorldTester : MonoBehaviour
     {
         [SerializeField] TerrainSettings settings;
+
+        [SerializeField] HeightmapLibrary library;
+        [SerializeField] string slot = "slot1";
 
         TerrainWorld world;
         Vector2Int editChunk = new(0, 0);
@@ -50,7 +55,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                     c.Heights[editZ + z, editX + x] += (1f - d) * 0.4f;
                 }
             c.Heights[editZ, editX] = Mathf.Clamp01(c.Heights[editZ, editX]);
-            c.Terrain.terrainData.SetHeights(0, 0, c.Heights);
+            world.CommitChunk(c);
             editValue = c.Heights[editZ, editX];
             checksumBefore = Checksum(c);
             status = $"Edited chunk (0,0). Center height = {editValue:F4}";
@@ -110,6 +115,22 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             return max;
         }
 
+        #region Save Load
+        void SaveWorld() => TerrainSerializer.Save(world, settings, slot);
+        void LoadWorld()
+        {
+            var loaded = TerrainSerializer.Load(slot, settings, library);
+            if (loaded == null) { status = "Load failed, see Console"; return; }
+
+            world.DestroyAll();
+            world = loaded;
+            ServiceRegistry.Register(world);
+            FrameCamera();
+            editValue = -1f;
+            status = $"Loaded '{slot}'  extent {world.Min} -> {world.Max}";
+        }
+        #endregion
+
         void OnDestroy()
         {
             ServiceRegistry.UnRegister<TerrainWorld>();
@@ -125,6 +146,9 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             if (GUILayout.Button("Extend +Z")) Extend(0, 0, 0, 1);
             if (GUILayout.Button("Extend -Z")) Extend(0, 0, 1, 0);
             if (GUILayout.Button("Verify now")) Verify();
+
+            if (GUILayout.Button("Save")) SaveWorld();
+            if (GUILayout.Button("Load")) LoadWorld();
             GUILayout.Label(status);
             GUILayout.EndArea();
         }

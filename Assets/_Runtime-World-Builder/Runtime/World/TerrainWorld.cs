@@ -10,16 +10,22 @@ namespace RuntimeWorldBuilder.Runtime.World
         public Vector2Int Coord;
         public float[,] Heights;
         public Terrain Terrain;
+        public bool Dirty;                      // true = edited, must be saved
     }
 
     public class TerrainWorld
     {
         readonly TerrainSettings s;
         readonly Dictionary<Vector2Int, TerrainChunkData> chunks = new();
+        readonly List<HeightmapStamp> stamps = new();
 
         public Vector2Int Min { get; private set; }
         public Vector2Int Max { get; private set; }
+        public IReadOnlyList<HeightmapStamp> Stamps => stamps;
+        public IEnumerable<TerrainChunkData> Chunks => chunks.Values;
 
+        #region Construction
+        // new world from settings
         public TerrainWorld(TerrainSettings terrainSettings)
         {
             s = terrainSettings;
@@ -31,9 +37,39 @@ namespace RuntimeWorldBuilder.Runtime.World
                     CreateChunk(new Vector2Int(x, z));
         }
 
-        //stamp
-        readonly List<HeightmapStamp> stamps = new();
-        public IReadOnlyList<HeightmapStamp> Stamps => stamps;
+        // world restored from a save
+        public TerrainWorld(TerrainSettings terrainSettings, Vector2Int min, Vector2Int max,
+            Dictionary<Vector2Int, float[,]> savedHeights, List<HeightmapStamp> savedStamps)
+        {
+            s = terrainSettings;
+            stamps.AddRange(savedStamps);
+            Min = min; Max = max;
+
+            foreach (var kv in savedHeights)             // 1) edited chunks exactly as saved
+            {
+                var data = new TerrainChunkData { Coord = kv.Key, Heights = kv.Value, Dirty = true };
+                data.Terrain = BuildTerrainObject(data, s.ChunkOrigin(kv.Key));
+                chunks[kv.Key] = data;
+            }
+            for (int z = Min.y; z <= Max.y; z++)         // 2) everything else from the seed
+                for (int x = Min.x; x <= Max.x; x++)
+                    if (!chunks.ContainsKey(new Vector2Int(x, z)))
+                        CreateChunk(new Vector2Int(x, z));
+        }
+
+        public void DestroyAll()
+        {
+            foreach (var d in chunks.Values)
+            {
+                if (d.Terrain == null) continue;
+                var td = d.Terrain.terrainData;
+                Object.Destroy(d.Terrain.gameObject);
+                Object.Destroy(td);                      // TerrainData is a runtime asset, would leak otherwise
+            }
+            chunks.Clear();
+            stamps.Clear();
+        }
+        #endregion
 
         #region Chunk Logic
         public bool TryGetChunk(Vector2Int c, out TerrainChunkData d) => chunks.TryGetValue(c, out d);
@@ -52,26 +88,28 @@ namespace RuntimeWorldBuilder.Runtime.World
                 }
 
             Min = newMin; Max = newMax;
-            // e.g. ServiceRegistry.Resolve<EventBus>().Publish(new TerrainExtentChanged(Min, Max));
         }
 
         void CreateChunk(Vector2Int c)
         {
-            int res = s.heightmapResolution;
+            int res = s.heightmapResolution, last = res - 1;
             var h = new float[res, res];
-            Vector3 origin = s.ChunkOrigin(c);
+            float sp = s.CellSpacing;
+            int baseX = c.x * last, baseZ = c.y * last;
 
-            // 1) fill from deterministic base
+            // 1) fill from deterministic base (global sample index => identical values on shared edges)
             for (int z = 0; z < res; z++)
                 for (int x = 0; x < res; x++)
-                    h[z, x] = s.SampleBase01(origin.x + x * s.CellSpacing, origin.z + z * s.CellSpacing);
+                    h[z, x] = s.SampleBase01((baseX + x) * sp, (baseZ + z) * sp);
 
             var data = new TerrainChunkData { Coord = c, Heights = h };
 
-            foreach (var st in stamps) ApplyStamp(data, st); // remider of stamps data
+            // 2) remainder of stamps that were placed before this chunk existed
+            bool touched = false;
+            foreach (var st in stamps) touched |= ApplyStamp(data, st);
+            data.Dirty = touched;
 
-            // 2) stitch shared edges from existing (possibly edited) neighbours
-            int last = res - 1;
+            // 3) stitch shared edges from existing (possibly edited) neighbours
             if (chunks.TryGetValue(c + Vector2Int.left, out var L))
                 for (int z = 0; z < res; z++) h[z, 0] = L.Heights[z, last];
             if (chunks.TryGetValue(c + Vector2Int.right, out var R))
@@ -81,7 +119,7 @@ namespace RuntimeWorldBuilder.Runtime.World
             if (chunks.TryGetValue(c + Vector2Int.up, out var U))
                 for (int x = 0; x < res; x++) h[last, x] = U.Heights[0, x];
 
-            data.Terrain = BuildTerrainObject(data, origin);
+            data.Terrain = BuildTerrainObject(data, s.ChunkOrigin(c));
             chunks[c] = data;
         }
 
@@ -95,9 +133,16 @@ namespace RuntimeWorldBuilder.Runtime.World
             go.transform.position = origin;
             return go.GetComponent<Terrain>();
         }
+
+        /// Call after changing a chunk's Heights array: uploads it and marks it for saving.
+        public void CommitChunk(TerrainChunkData d)
+        {
+            d.Terrain.terrainData.SetHeights(0, 0, d.Heights);
+            d.Dirty = true;
+        }
         #endregion
 
-        #region  Stamp Logic
+        #region Stamp Logic
         public void PlaceStamp(HeightmapStamp st)
         {
             if (st.heightmap == null) return;
@@ -113,7 +158,7 @@ namespace RuntimeWorldBuilder.Runtime.World
             for (int z = cMin.y; z <= cMax.y; z++)
                 for (int x = cMin.x; x <= cMax.x; x++)
                     if (chunks.TryGetValue(new Vector2Int(x, z), out var d) && ApplyStamp(d, st))
-                        d.Terrain.terrainData.SetHeights(0, 0, d.Heights);
+                        CommitChunk(d);
         }
 
         bool ApplyStamp(TerrainChunkData d, HeightmapStamp st)
