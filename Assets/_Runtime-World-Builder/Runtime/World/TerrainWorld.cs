@@ -13,7 +13,7 @@ namespace RuntimeWorldBuilder.Runtime.World
         public bool Dirty;                      // true = edited, must be saved
     }
 
-    public class TerrainWorld
+    public partial class TerrainWorld
     {
         readonly TerrainSettings s;
         readonly Dictionary<Vector2Int, TerrainChunkData> chunks = new();
@@ -21,11 +21,11 @@ namespace RuntimeWorldBuilder.Runtime.World
 
         public Vector2Int Min { get; private set; }
         public Vector2Int Max { get; private set; }
+        public int Version { get; private set; }    // increases whenever any terrain height changes
         public IReadOnlyList<HeightmapStamp> Stamps => stamps;
         public IEnumerable<TerrainChunkData> Chunks => chunks.Values;
 
         #region Construction
-        // new world from settings
         public TerrainWorld(TerrainSettings terrainSettings)
         {
             s = terrainSettings;
@@ -59,35 +59,70 @@ namespace RuntimeWorldBuilder.Runtime.World
 
         public void DestroyAll()
         {
-            foreach (var d in chunks.Values)
-            {
-                if (d.Terrain == null) continue;
-                var td = d.Terrain.terrainData;
-                Object.Destroy(d.Terrain.gameObject);
-                Object.Destroy(td);                      // TerrainData is a runtime asset, would leak otherwise
-            }
+            foreach (var d in chunks.Values) DestroyChunkObjects(d);
             chunks.Clear();
             stamps.Clear();
+            ClearHistory();
+        }
+
+        static void DestroyChunkObjects(TerrainChunkData d)
+        {
+            if (d.Terrain == null) return;
+            var td = d.Terrain.terrainData;
+            UnityEngine.Object.Destroy(d.Terrain.gameObject);
+            UnityEngine.Object.Destroy(td);              // TerrainData is a runtime asset, would leak otherwise
         }
         #endregion
 
         #region Chunk Logic
         public bool TryGetChunk(Vector2Int c, out TerrainChunkData d) => chunks.TryGetValue(c, out d);
 
-        /// Grow extent by N chunks per side. Existing chunks are never modified.
+        /// Grow extent by N chunks per side. Existing chunks are never modified. Undoable.
         public void Extend(int left, int right, int down, int up)
+        {
+            var oldMin = Min; var oldMax = Max;
+            var created = ExtendInternal(left, right, down, up);
+            if (created.Count == 0) return;
+
+            PushOp(new ExtendOp
+            {
+                Label = "Extend",
+                OldMin = oldMin,
+                OldMax = oldMax,
+                L = left,
+                R = right,
+                D = down,
+                U = up,
+                Created = created,
+            });
+        }
+
+        List<Vector2Int> ExtendInternal(int left, int right, int down, int up)
         {
             var newMin = new Vector2Int(Min.x - left, Min.y - down);
             var newMax = new Vector2Int(Max.x + right, Max.y + up);
+            var created = new List<Vector2Int>();
 
             for (int z = newMin.y; z <= newMax.y; z++)
                 for (int x = newMin.x; x <= newMax.x; x++)
                 {
                     var c = new Vector2Int(x, z);
-                    if (!chunks.ContainsKey(c)) CreateChunk(c);
+                    if (chunks.ContainsKey(c)) continue;
+                    CreateChunk(c);
+                    created.Add(c);
                 }
 
             Min = newMin; Max = newMax;
+            Version++;
+            return created;
+        }
+
+        void RemoveChunk(Vector2Int c)
+        {
+            if (!chunks.TryGetValue(c, out var d)) return;
+            DestroyChunkObjects(d);
+            chunks.Remove(c);
+            Version++;
         }
 
         void CreateChunk(Vector2Int c)
@@ -134,21 +169,27 @@ namespace RuntimeWorldBuilder.Runtime.World
             return go.GetComponent<Terrain>();
         }
 
-        /// Call after changing a chunk's Heights array: uploads it and marks it for saving.
+        /// Uploads a chunk's Heights and marks it for saving.
+        /// For undo: call Touch(chunk) BEFORE modifying Heights, inside BeginEdit/EndEdit.
         public void CommitChunk(TerrainChunkData d)
         {
             d.Terrain.terrainData.SetHeights(0, 0, d.Heights);
             d.Dirty = true;
+            Version++;
         }
         #endregion
 
         #region Stamp Logic
+        /// Undoable.
         public void PlaceStamp(HeightmapStamp st)
         {
             if (st.heightmap == null) return;
 
             st.Prepare();
+
+            BeginEdit("Place stamp");
             stamps.Add(st);
+            NoteStampAdded(st);
 
             st.GetWorldBounds(out var min, out var max);
             float sp = s.CellSpacing;                       // 1 sample margin so shared edges are included
@@ -157,8 +198,13 @@ namespace RuntimeWorldBuilder.Runtime.World
 
             for (int z = cMin.y; z <= cMax.y; z++)
                 for (int x = cMin.x; x <= cMax.x; x++)
-                    if (chunks.TryGetValue(new Vector2Int(x, z), out var d) && ApplyStamp(d, st))
-                        CommitChunk(d);
+                    if (chunks.TryGetValue(new Vector2Int(x, z), out var d))
+                    {
+                        Touch(d);                           // snapshot BEFORE the stamp changes it
+                        if (ApplyStamp(d, st)) CommitChunk(d);
+                    }
+
+            EndEdit();                                      // pushes one undo step
         }
 
         bool ApplyStamp(TerrainChunkData d, HeightmapStamp st)

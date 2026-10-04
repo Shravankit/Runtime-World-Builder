@@ -56,6 +56,8 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         Vector2 scroll;
         Rect paletteRect, panelRect;
 
+        int lastVersion = -1;
+
         Texture2D Current
         {
             get
@@ -135,6 +137,8 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         void Update()
         {
             if (!ServiceRegistry.TryResolve<TerrainWorld>(out var world)) return;
+
+            if (world.Version != lastVersion) { dirty = true; lastVersion = world.Version; }
 
             if (library != null && library.textures.Count > 0)
             {

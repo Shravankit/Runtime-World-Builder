@@ -29,6 +29,18 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             FrameCamera();
         }
 
+        void Update()
+        {
+            bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)
+                     || Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
+            if (!ctrl) return;
+            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+            if (Input.GetKeyDown(KeyCode.Z)) { if (shift) DoRedo(); else DoUndo(); }
+            else if (Input.GetKeyDown(KeyCode.Y)) DoRedo();
+        }
+
+
         void FrameCamera()
         {
             var cam = Camera.main;
@@ -47,6 +59,9 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             int res = settings.heightmapResolution;
             editX = res / 2; editZ = res / 2;
             int r = 25;
+
+            world.BeginEdit("Bump");
+            world.Touch(c);                                     // snapshot BEFORE modifying
             for (int z = -r; z <= r; z++)
                 for (int x = -r; x <= r; x++)
                 {
@@ -56,6 +71,8 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 }
             c.Heights[editZ, editX] = Mathf.Clamp01(c.Heights[editZ, editX]);
             world.CommitChunk(c);
+            world.EndEdit();
+
             editValue = c.Heights[editZ, editX];
             checksumBefore = Checksum(c);
             status = $"Edited chunk (0,0). Center height = {editValue:F4}";
@@ -131,6 +148,20 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         }
         #endregion
 
+        #region Undo Redo
+        void DoUndo()
+        {
+            string label = world.UndoLabel;
+            if (world.Undo()) { editValue = -1f; status = $"Undo: {label}\nExtent {world.Min} -> {world.Max}"; }
+        }
+
+        void DoRedo()
+        {
+            string label = world.RedoLabel;
+            if (world.Redo()) { editValue = -1f; status = $"Redo: {label}\nExtent {world.Min} -> {world.Max}"; }
+        }
+        #endregion
+
         void OnDestroy()
         {
             ServiceRegistry.UnRegister<TerrainWorld>();
@@ -149,6 +180,12 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
             if (GUILayout.Button("Save")) SaveWorld();
             if (GUILayout.Button("Load")) LoadWorld();
+
+            GUI.enabled = world.CanUndo;
+            if (GUILayout.Button($"Undo {world.UndoLabel}  (Ctrl+Z)")) DoUndo();
+            GUI.enabled = world.CanRedo;
+            if (GUILayout.Button($"Redo {world.RedoLabel}  (Ctrl+Y)")) DoRedo();
+            GUI.enabled = true;
             GUILayout.Label(status);
             GUILayout.EndArea();
         }
