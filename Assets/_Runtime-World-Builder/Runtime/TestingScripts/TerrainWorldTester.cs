@@ -1,3 +1,4 @@
+using RuntimeWorldBuilder.Core.Service;
 using RuntimeWorldBuilder.Runtime.World;
 using RuntimeWorldBuilder.SO.Settings;
 using UnityEngine;
@@ -18,6 +19,8 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         void Start()
         {
             world = new TerrainWorld(settings);
+            ServiceRegistry.Register(settings);
+            ServiceRegistry.Register(world);
             FrameCamera();
         }
 
@@ -105,6 +108,12 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                     }
                 }
             return max;
+        }
+
+        void OnDestroy()
+        {
+            ServiceRegistry.UnRegister<TerrainWorld>();
+            ServiceRegistry.UnRegister<TerrainSettings>();
         }
 
         void OnGUI()
