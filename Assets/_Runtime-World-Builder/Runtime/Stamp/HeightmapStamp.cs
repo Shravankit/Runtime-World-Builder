@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace RuntimeWorldBuilder.Runtime.Stamp
@@ -28,13 +29,35 @@ namespace RuntimeWorldBuilder.Runtime.Stamp
         [NonSerialized] int cw, ch;
         [NonSerialized] float cos = 1f, sin;
 
+        sealed class HeightCache { public float[] data; public int w, h; }
+        static readonly Dictionary<Texture2D, HeightCache> shared = new();
+        const int MaxCacheDim = 1024;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => shared.Clear();
+
+        public static void Warm(Texture2D tex) { if (tex != null) GetShared(tex); }
+
+        static HeightCache GetShared(Texture2D tex)
+        {
+            if (shared.TryGetValue(tex, out var hc)) return hc;
+
+            int mip = 0, w = tex.width, h = tex.height;
+            while (Mathf.Max(w, h) > MaxCacheDim && mip < tex.mipmapCount - 1)
+            {
+                mip++; w = Mathf.Max(1, w >> 1); h = Mathf.Max(1, h >> 1);
+            }
+            var px = tex.GetPixels(mip);
+            var data = new float[px.Length];
+            for (int i = 0; i < px.Length; i++) data[i] = px[i].r;
+
+            return shared[tex] = new HeightCache { data = data, w = w, h = h };
+        }
         public void BuildCache()
         {
             if (cache != null || heightmap == null) return;
-            var px = heightmap.GetPixels();          // full float precision (works with R16)
-            cw = heightmap.width; ch = heightmap.height;
-            cache = new float[px.Length];
-            for (int i = 0; i < px.Length; i++) cache[i] = px[i].r;
+            var hc = GetShared(heightmap);
+            cache = hc.data; cw = hc.w; ch = hc.h;
         }
 
         public float Sample(float u, float v)        // bilinear, u,v in 0..1

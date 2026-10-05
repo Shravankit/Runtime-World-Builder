@@ -212,10 +212,16 @@ namespace RuntimeWorldBuilder.Runtime.World
             int res = s.heightmapResolution;
             float sp = s.CellSpacing, maxH = s.maxHeight;
             int baseX = d.Coord.x * (res - 1), baseZ = d.Coord.y * (res - 1);
-            bool changed = false;
 
-            for (int z = 0; z < res; z++)
-                for (int x = 0; x < res; x++)
+            st.GetWorldBounds(out var bmin, out var bmax);
+            int x0 = Mathf.Clamp(Mathf.FloorToInt(bmin.x / sp) - baseX - 1, 0, res - 1);
+            int x1 = Mathf.Clamp(Mathf.CeilToInt(bmax.x / sp) - baseX + 1, 0, res - 1);
+            int z0 = Mathf.Clamp(Mathf.FloorToInt(bmin.y / sp) - baseZ - 1, 0, res - 1);
+            int z1 = Mathf.Clamp(Mathf.CeilToInt(bmax.y / sp) - baseZ + 1, 0, res - 1);
+
+            bool changed = false;
+            for (int z = z0; z <= z1; z++)
+                for (int x = x0; x <= x1; x++)
                 {
                     float wx = (baseX + x) * sp, wz = (baseZ + z) * sp;
                     if (st.TryEvaluate(wx, wz, d.Heights[z, x], maxH, out var nv, out _))
