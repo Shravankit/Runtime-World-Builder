@@ -118,6 +118,12 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             return m;
         }
 
+        void Start()
+        {
+            if (library != null) foreach (var t in library.textures) HeightmapStamp.Warm(t);
+            if (heightmap != null) HeightmapStamp.Warm(heightmap);
+        }
+
         void Select(int i)
         {
             int n = library.textures.Count;

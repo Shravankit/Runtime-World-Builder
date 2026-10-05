@@ -196,6 +196,8 @@ namespace RuntimeWorldBuilder.Runtime.World
             if (!chunks.TryGetValue(c, out var d)) return;
             Array.Copy(src, d.Heights, src.Length);
             d.Terrain.terrainData.SetHeights(0, 0, d.Heights);
+            int last = s.heightmapResolution - 1;
+            QueuePaint(d, new Region(0, 0, last, last));
             d.Dirty = dirty;
             Version++;
         }

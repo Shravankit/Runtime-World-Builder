@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using RuntimeWorldBuilder.Runtime.Stamp;
 using RuntimeWorldBuilder.Runtime.World;
+using RuntimeWorldBuilder.SO.Biomes;
 using RuntimeWorldBuilder.SO.HeightMap;
 using RuntimeWorldBuilder.SO.Settings;
 using UnityEngine;
@@ -64,7 +65,7 @@ namespace RuntimeWorldBuilder.Data
         }
 
         //Load
-        public static TerrainWorld Load(string slot, TerrainSettings s, HeightmapLibrary lib)
+        public static TerrainWorld Load(string slot, TerrainSettings s, TerrainBiomeSettings biome, HeightmapLibrary lib)
         {
             try
             {
@@ -88,7 +89,7 @@ namespace RuntimeWorldBuilder.Data
                 }
 
                 data.ApplyTo(s);
-                return new TerrainWorld(s, data.extentMin, data.extentMax, heights, stamps);
+                return new TerrainWorld(s, biome, data.extentMin, data.extentMax, heights, stamps);
             }
             catch (Exception e)
             {
