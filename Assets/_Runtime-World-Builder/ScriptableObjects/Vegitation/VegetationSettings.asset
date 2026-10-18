@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f50e6d077ca44d47bc8cd183ff4a8fe, type: 3}
+  m_Name: VegetationSettings
+  m_EditorClassIdentifier: 
+  seed: 777
+  vegetationRules:
+  - name: Tree
+    vegetationKind: 0
+    prefab: {fileID: 4012337630082778474, guid: cce4d8667f2436a479759f07084d8ff4, type: 3}
+    texture: {fileID: 0}
+    biomeLayerIndex: 0
+    minLayerWeight: 0.5
+    minHeight01: 0
+    maxHeight01: 0
+    maxSlope: 30
+    density: 40
+    weightPower: 0
+    widthScale: {x: 0.8, y: 1.2}
+    heightScale: {x: 0.8, y: 1.3}
+    healthyColor: {r: 0, g: 0, b: 0, a: 0}
+    dryColor: {r: 0, g: 0, b: 0, a: 0}
+    noiseSpread: 0.098
+  - name: Grass
+    vegetationKind: 1
+    prefab: {fileID: 889445777815560387, guid: 054bf5cf244ff2e4083cbf8eca205cf0, type: 3}
+    texture: {fileID: 0}
+    biomeLayerIndex: 0
+    minLayerWeight: 0.5
+    minHeight01: 0
+    maxHeight01: 0
+    maxSlope: 30
+    density: 40
+    weightPower: 0
+    widthScale: {x: 0.8, y: 1.2}
+    heightScale: {x: 0.8, y: 1.3}
+    healthyColor: {r: 0, g: 0, b: 0, a: 0}
+    dryColor: {r: 0, g: 0, b: 0, a: 0}
+    noiseSpread: 0.098
+  maxTreesPerChunk: 800
+  maxDetailPerCell: 2
+  detailResolution: 256
+  detailResolutionPerPatch: 16
+  treeDistance: 250
+  treeBillboardDistance: 100
+  detailDistance: 40
+  detailDensityScale: 0.6

@@ -343,6 +343,7 @@ GameObject:
   - component: {fileID: 2064476714}
   - component: {fileID: 2064476715}
   - component: {fileID: 2064476716}
+  - component: {fileID: 2064476717}
   m_Layer: 0
   m_Name: TerrainManager
   m_TagString: Untagged
@@ -379,6 +380,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   settings: {fileID: 11400000, guid: ceef4208b0cd9e546a408b4e364accd2, type: 2}
   biomeSettings: {fileID: 11400000, guid: 65b9919298522704d9e9c867b5ddbbdd, type: 2}
+  vegetationSettings: {fileID: 11400000, guid: 80a2673a13d6d984f970f77fc10c63bf, type: 2}
   library: {fileID: 11400000, guid: a8bcf8abecd8b624b82e8d989eb134f9, type: 2}
   slot: slot1
 --- !u!114 &2064476716
@@ -413,6 +415,18 @@ MonoBehaviour:
     y: 10
     width: 320
     height: 400
+--- !u!114 &2064476717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2064476713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 136df85765e75d04f9743cd819fde7ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

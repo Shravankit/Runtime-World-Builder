@@ -1,7 +1,9 @@
+using System.Collections;
 using System.Collections.Generic;
 using RuntimeWorldBuilder.Runtime.Stamp;
 using RuntimeWorldBuilder.SO.Biomes;
 using RuntimeWorldBuilder.SO.Settings;
+using RuntimeWorldBuilder.SO.Vegetation;
 using UnityEngine;
 
 namespace RuntimeWorldBuilder.Runtime.World
@@ -18,6 +20,7 @@ namespace RuntimeWorldBuilder.Runtime.World
     {
         readonly TerrainSettings s;
         readonly TerrainBiomeSettings biomeSettings;
+        readonly VegetationSettings vegetationSettings;
         readonly Dictionary<Vector2Int, TerrainChunkData> chunks = new();
         readonly List<HeightmapStamp> stamps = new();
 
@@ -28,10 +31,12 @@ namespace RuntimeWorldBuilder.Runtime.World
         public IEnumerable<TerrainChunkData> Chunks => chunks.Values;
 
         #region Construction
-        public TerrainWorld(TerrainSettings terrainSettings, TerrainBiomeSettings biome)
+        public TerrainWorld(TerrainSettings terrainSettings, TerrainBiomeSettings biome,
+            VegetationSettings vegetation = null)
         {
             s = terrainSettings;
             biomeSettings = biome;
+            vegetationSettings = vegetation;
             Min = s.initialMin;
             Max = s.initialMax;
 
@@ -42,10 +47,12 @@ namespace RuntimeWorldBuilder.Runtime.World
 
         // world restored from a save
         public TerrainWorld(TerrainSettings terrainSettings, TerrainBiomeSettings biome, Vector2Int min, Vector2Int max,
-            Dictionary<Vector2Int, float[,]> savedHeights, List<HeightmapStamp> savedStamps)
+            Dictionary<Vector2Int, float[,]> savedHeights, List<HeightmapStamp> savedStamps,
+            VegetationSettings vegetation = null)
         {
             s = terrainSettings;
             biomeSettings = biome;
+            vegetationSettings = vegetation;
             stamps.AddRange(savedStamps);
             Min = min; Max = max;
 
@@ -55,6 +62,7 @@ namespace RuntimeWorldBuilder.Runtime.World
                 data.Terrain = BuildTerrainObject(data, s.ChunkOrigin(kv.Key));
                 TerrainPainter.PaintChunk(data, s, biomeSettings);
                 chunks[kv.Key] = data;
+                QueueVeg(kv.Key, 0f);
             }
             for (int z = Min.y; z <= Max.y; z++)         // 2) everything else from the seed
                 for (int x = Min.x; x <= Max.x; x++)
@@ -67,6 +75,10 @@ namespace RuntimeWorldBuilder.Runtime.World
             foreach (var d in chunks.Values) DestroyChunkObjects(d);
             chunks.Clear();
             stamps.Clear();
+            pendingPaint.Clear();
+            pendingVeg.Clear();
+            vegReadyAt.Clear();
+            vegJob = null;
             ClearHistory();
         }
 
@@ -127,6 +139,10 @@ namespace RuntimeWorldBuilder.Runtime.World
             if (!chunks.TryGetValue(c, out var d)) return;
             DestroyChunkObjects(d);
             chunks.Remove(c);
+            pendingPaint.Remove(c);
+            pendingVeg.Remove(c);
+            vegReadyAt.Remove(c);
+            if (vegJob != null && vegJobCoord == c) vegJob = null;
             Version++;
         }
 
@@ -162,6 +178,7 @@ namespace RuntimeWorldBuilder.Runtime.World
             data.Terrain = BuildTerrainObject(data, s.ChunkOrigin(c));
             TerrainPainter.PaintChunk(data, s, biomeSettings);
             chunks[c] = data;
+            QueueVeg(c, 0f);                                // vegetation is filled in on Tick, after painting
         }
 
         Terrain BuildTerrainObject(TerrainChunkData d, Vector3 origin)
@@ -271,7 +288,12 @@ namespace RuntimeWorldBuilder.Runtime.World
         }
 
         readonly Dictionary<Vector2Int, Region> pendingPaint = new();
+        readonly HashSet<Vector2Int> pendingVeg = new();
+        readonly Dictionary<Vector2Int, float> vegReadyAt = new();   // debounce: chunk may populate after this time
         readonly List<Vector2Int> tmpKeys = new();
+
+        IEnumerator vegJob;                 // time-sliced populate currently running
+        Vector2Int vegJobCoord;
 
         void QueuePaint(TerrainChunkData d, Region r)
         {
@@ -279,21 +301,76 @@ namespace RuntimeWorldBuilder.Runtime.World
             pendingPaint[d.Coord] = r;
         }
 
-        public bool HasPendingPaint => pendingPaint.Count > 0;
+        /// Queue a chunk for vegetation. delay > 0 debounces rapid edits (brush strokes, stamps).
+        void QueueVeg(Vector2Int c, float delay = 0.5f)
+        {
+            pendingVeg.Add(c);
+            vegReadyAt[c] = Time.unscaledTime + delay;
+            if (vegJob != null && vegJobCoord == c) vegJob = null;   // chunk changed under the job, restart it later
+        }
 
-        /// Call every frame. Paints queued regions until the time budget is spent (always at least one).
+        /// Nearest-to-camera chunk whose debounce has elapsed.
+        bool PickNearestReady(out Vector2Int best)
+        {
+            best = default;
+            float bestD = float.MaxValue;
+            bool found = false;
+            var cam = Camera.main != null ? Camera.main.transform.position : Vector3.zero;
+            var cam2 = new Vector2(cam.x, cam.z);
+
+            foreach (var c in pendingVeg)
+            {
+                if (vegReadyAt.TryGetValue(c, out var t) && Time.unscaledTime < t) continue;
+                var center = new Vector2((c.x + 0.5f) * s.chunkSize, (c.y + 0.5f) * s.chunkSize);
+                float d = (center - cam2).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = c; found = true; }
+            }
+
+            if (found) { pendingVeg.Remove(best); vegReadyAt.Remove(best); }
+            return found;
+        }
+
+        public bool HasPendingPaint => pendingPaint.Count > 0 || pendingVeg.Count > 0 || vegJob != null;
+
+        /// Call every frame. Paints queued regions, then (once painting is done) fills vegetation
+        /// nearest-first in small slices, until the time budget is spent.
         public void Tick(float budgetMs = 4f)
         {
-            if (pendingPaint.Count == 0) return;
+            if (pendingPaint.Count == 0 && pendingVeg.Count == 0 && vegJob == null) return;
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            tmpKeys.Clear(); tmpKeys.AddRange(pendingPaint.Keys);
-            foreach (var k in tmpKeys)
+
+            // 1) alphamap painting
+            if (pendingPaint.Count > 0)
             {
-                var r = pendingPaint[k];
-                pendingPaint.Remove(k);
-                if (chunks.TryGetValue(k, out var d))
-                    TerrainPainter.PaintRegion(d, s, biomeSettings, r.X0, r.Z0, r.X1, r.Z1);
-                if (sw.Elapsed.TotalMilliseconds >= budgetMs) break;
+                tmpKeys.Clear(); tmpKeys.AddRange(pendingPaint.Keys);
+                foreach (var k in tmpKeys)
+                {
+                    var r = pendingPaint[k];
+                    pendingPaint.Remove(k);
+                    if (chunks.TryGetValue(k, out var d))
+                    {
+                        TerrainPainter.PaintRegion(d, s, biomeSettings, r.X0, r.Z0, r.X1, r.Z1);
+                        QueueVeg(k);                        // repaint changed the texture, redo vegetation (debounced)
+                    }
+                    if (sw.Elapsed.TotalMilliseconds >= budgetMs) return;
+                }
+            }
+
+            // 2) vegetation, read from the finished alphamaps
+            if (pendingVeg.Count > 0 || vegJob != null)
+            {
+                if (vegetationSettings == null) { pendingVeg.Clear(); vegReadyAt.Clear(); vegJob = null; return; }
+
+                while (sw.Elapsed.TotalMilliseconds < budgetMs)
+                {
+                    if (vegJob == null)
+                    {
+                        if (!PickNearestReady(out vegJobCoord)) break;
+                        if (!chunks.TryGetValue(vegJobCoord, out var vd)) continue;
+                        vegJob = VegetationPopulator.PopulateSteps(vd, s, biomeSettings, vegetationSettings);
+                    }
+                    if (!vegJob.MoveNext()) vegJob = null;
+                }
             }
         }
 

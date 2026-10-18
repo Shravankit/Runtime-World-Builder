@@ -4,6 +4,7 @@ using RuntimeWorldBuilder.Runtime.World;
 using RuntimeWorldBuilder.SO.Biomes;
 using RuntimeWorldBuilder.SO.HeightMap;
 using RuntimeWorldBuilder.SO.Settings;
+using RuntimeWorldBuilder.SO.Vegetation;
 using UnityEngine;
 
 namespace RuntimeWorldBuilder.Runtime.Testing
@@ -12,6 +13,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
     {
         [SerializeField] TerrainSettings settings;
         [SerializeField] TerrainBiomeSettings biomeSettings;
+        [SerializeField] VegetationSettings vegetationSettings;
         [SerializeField] HeightmapLibrary library;
         [SerializeField] string slot = "slot1";
 
@@ -24,7 +26,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
         void Start()
         {
-            world = new TerrainWorld(settings, biomeSettings);
+            world = new TerrainWorld(settings, biomeSettings, vegetationSettings);
             ServiceRegistry.Register(settings);
             ServiceRegistry.Register(world);
             FrameCamera();
@@ -138,7 +140,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         void SaveWorld() => TerrainSerializer.Save(world, settings, slot);
         void LoadWorld()
         {
-            var loaded = TerrainSerializer.Load(slot, settings, biomeSettings, library);
+            var loaded = TerrainSerializer.Load(slot, settings, biomeSettings, library, vegetationSettings);
             if (loaded == null) { status = "Load failed, see Console"; return; }
 
             world.DestroyAll();
