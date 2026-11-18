@@ -137,7 +137,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         bool OverUI()
         {
             var p = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
-            return paletteRect.Contains(p) || panelRect.Contains(p) || testerPanelRect.Contains(p);
+            return paletteRect.Contains(p) || panelRect.Contains(p) || testerPanelRect.Contains(p) || RuntimeWorldBuilder.Runtime.Features.FeaturePlacer.Active;
         }
 
         void Update()

@@ -344,6 +344,7 @@ GameObject:
   - component: {fileID: 2064476715}
   - component: {fileID: 2064476716}
   - component: {fileID: 2064476717}
+  - component: {fileID: 2064476718}
   m_Layer: 0
   m_Name: TerrainManager
   m_TagString: Untagged
@@ -427,6 +428,45 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 136df85765e75d04f9743cd819fde7ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &2064476718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2064476713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 051970476854ace47a6b4d42cf443e35, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  materials:
+    road: {fileID: 0}
+    bridge: {fileID: 0}
+    water: {fileID: 0}
+  road:
+    width: 8
+    shoulder: 6
+    maxGrade: 0.12
+    bridgeClearance: 3
+    deckThickness: 0.8
+  riverWidth: 12
+  riverDepth: 3
+  lakeRadius: 45
+  lakeDepth: 8
+  pondRadius: 12
+  pondDepth: 2
+  shapeRadius: 80
+  hillHeight: 30
+  valleyDepth: 20
+  flattenRadius: 40
+  stamper: {fileID: 2064476716}
+  panelRect:
+    serializedVersion: 2
+    x: 10
+    y: 420
+    width: 330
+    height: 400
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
