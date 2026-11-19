@@ -1,0 +1,298 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="RuntimeTerrain.uss" />
+
+    <!-- Transparent root so 3D viewport clicks pass through -->
+    <ui:VisualElement name="rwb-root" class="rwb-root" picking-mode="Ignore">
+
+        <!-- TOP BAR -->
+        <ui:VisualElement name="top-bar" class="top-bar" picking-mode="Ignore">
+            <ui:VisualElement class="pill-panel">
+                <ui:VisualElement class="btn-icon icon-sculpt" />
+                <ui:Label text="Runtime World Builder" class="brand-title" />
+                <ui:Label name="lbl-active-tool" text="Sculpt" class="active-badge" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="pill-panel">
+                <ui:Button name="btn-undo" class="top-btn">
+                    <ui:VisualElement class="btn-icon icon-undo" />
+                    <ui:Label text="Undo" class="btn-lbl" />
+                </ui:Button>
+                <ui:Button name="btn-redo" class="top-btn">
+                    <ui:VisualElement class="btn-icon icon-redo" />
+                    <ui:Label text="Redo" class="btn-lbl" />
+                </ui:Button>
+                <ui:Button name="btn-quick-save" class="top-btn">
+                    <ui:VisualElement class="btn-icon icon-save" />
+                    <ui:Label text="Save" class="btn-lbl" />
+                </ui:Button>
+                <ui:Button name="btn-quick-load" class="top-btn">
+                    <ui:VisualElement class="btn-icon icon-load" />
+                    <ui:Label text="Load" class="btn-lbl" />
+                </ui:Button>
+                <ui:Button name="btn-play-mode" class="top-btn top-btn--accent">
+                    <ui:VisualElement class="btn-icon icon-play" />
+                    <ui:Label text="Play" class="btn-lbl" />
+                </ui:Button>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="pill-panel">
+                <ui:Button name="btn-hide-ui" text="✕ Hide UI" class="top-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- MIDDLE WORKSPACE -->
+        <ui:VisualElement name="workspace-area" class="workspace-area" picking-mode="Ignore">
+
+            <!-- LEFT RAIL + CONTEXTUAL POPOVER -->
+            <ui:VisualElement name="left-cluster" class="left-cluster" picking-mode="Ignore">
+                <ui:VisualElement name="tool-rail" class="tool-rail">
+                    <ui:Button name="rail-sculpt" class="rail-btn rail-btn--active">
+                        <ui:VisualElement class="rail-icon icon-sculpt" />
+                        <ui:Label text="Sculpt" class="rail-lbl" />
+                    </ui:Button>
+                    <ui:Button name="rail-stamps" class="rail-btn">
+                        <ui:VisualElement class="rail-icon icon-stamps" />
+                        <ui:Label text="Stamps" class="rail-lbl" />
+                    </ui:Button>
+                    <ui:Button name="rail-roads" class="rail-btn">
+                        <ui:VisualElement class="rail-icon icon-roads" />
+                        <ui:Label text="Roads" class="rail-lbl" />
+                    </ui:Button>
+                    <ui:Button name="rail-paint" class="rail-btn">
+                        <ui:VisualElement class="rail-icon icon-paint" />
+                        <ui:Label text="Paint" class="rail-lbl" />
+                    </ui:Button>
+                    <ui:Button name="rail-nature" class="rail-btn">
+                        <ui:VisualElement class="rail-icon icon-nature" />
+                        <ui:Label text="Nature" class="rail-lbl" />
+                    </ui:Button>
+                    <ui:Button name="rail-library" class="rail-btn">
+                        <ui:VisualElement class="rail-icon icon-library" />
+                        <ui:Label text="Library" class="rail-lbl" />
+                    </ui:Button>
+                    <ui:Button name="rail-settings" class="rail-btn">
+                        <ui:VisualElement class="rail-icon icon-settings" />
+                        <ui:Label text="Settings" class="rail-lbl" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <!-- SINGLE CONTEXTUAL POPOVER -->
+                <ui:VisualElement name="tool-popover" class="tool-popover">
+                    <ui:VisualElement class="popover-header">
+                        <ui:Label name="lbl-popover-title" text="Brush" class="popover-title" />
+                        <ui:Button name="btn-close-popover" text="✕" class="icon-btn" />
+                    </ui:VisualElement>
+
+                    <ui:ScrollView class="popover-scroll" vertical-scroller-visibility="Auto">
+
+                        <!-- SCULPT POPOVER -->
+                        <ui:VisualElement name="pop-sculpt" class="popover-body">
+                            <ui:VisualElement class="chip-grid-3">
+                                <ui:Button name="btn-tool-hill" class="tool-chip tool-chip--active">
+                                    <ui:VisualElement class="btn-icon icon-raise" />
+                                    <ui:Label text="Raise" class="btn-lbl" />
+                                </ui:Button>
+                                <ui:Button name="btn-tool-valley" class="tool-chip">
+                                    <ui:VisualElement class="btn-icon icon-lower" />
+                                    <ui:Label text="Lower" class="btn-lbl" />
+                                </ui:Button>
+                                <ui:Button name="btn-tool-smooth" class="tool-chip">
+                                    <ui:VisualElement class="btn-icon icon-smooth" />
+                                    <ui:Label text="Smooth" class="btn-lbl" />
+                                </ui:Button>
+                                <ui:Button name="btn-tool-flatten" class="tool-chip">
+                                    <ui:VisualElement class="btn-icon icon-flatten" />
+                                    <ui:Label text="Flatten" class="btn-lbl" />
+                                </ui:Button>
+                            </ui:VisualElement>
+                            <ui:Slider name="sld-brush-radius" label="Size" low-value="1" high-value="100" value="30" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-brush-strength" label="Strength" low-value="0.01" high-value="1" value="0.8" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-brush-falloff" label="Falloff" low-value="0" high-value="1" value="0.5" show-input-field="true" class="field" />
+                            <ui:FloatField name="fld-flatten-height" label="Target H" value="25" class="field" />
+                        </ui:VisualElement>
+
+                        <!-- STAMPS POPOVER -->
+                        <ui:VisualElement name="pop-stamps" class="popover-body hidden">
+                            <ui:DropdownField name="dd-heightmap-library" label="Heightmap" choices="MountainPeak,CanyonRidge,VolcanoCrater,PlateauFlat" index="0" class="field" />
+                            <ui:DropdownField name="dd-stamp-blend" label="Blend" choices="Add,Replace,Min,Max" index="0" class="field" />
+                            <ui:Slider name="sld-stamp-scale" label="Scale" low-value="10" high-value="250" value="80" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-stamp-rotation" label="Rotate" low-value="0" high-value="360" value="0" show-input-field="true" class="field" />
+                            <ui:Toggle name="tgl-stamp-preview" label="Live Preview" value="true" class="field" />
+                            <ui:Button name="btn-apply-stamp" text="Apply Stamp" class="action-btn action-btn--primary" />
+                        </ui:VisualElement>
+
+                        <!-- ROADS & WATER POPOVER -->
+                        <ui:VisualElement name="pop-roads" class="popover-body hidden">
+                            <ui:VisualElement class="chip-grid-2">
+                                <ui:Button name="btn-builder-road" class="tool-chip">
+                                    <ui:VisualElement class="btn-icon icon-roads" />
+                                    <ui:Label text="Road" class="btn-lbl" />
+                                </ui:Button>
+                                <ui:Button name="btn-builder-river" class="tool-chip">
+                                    <ui:VisualElement class="btn-icon icon-river" />
+                                    <ui:Label text="River" class="btn-lbl" />
+                                </ui:Button>
+                                <ui:Button name="btn-builder-lake" text="Lake" class="tool-chip" />
+                                <ui:Button name="btn-builder-pond" text="Pond" class="tool-chip" />
+                            </ui:VisualElement>
+                            <ui:Slider name="sld-path-width" label="Width" low-value="2" high-value="30" value="8" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-path-depth" label="Depth" low-value="0" high-value="10" value="1.5" show-input-field="true" class="field" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-spline-undo-pt" text="Undo Pt" class="action-btn action-btn--soft btn--grow" />
+                                <ui:Button name="btn-spline-finish" text="Finish" class="action-btn action-btn--primary btn--grow" />
+                                <ui:Button name="btn-spline-cancel" text="Cancel" class="action-btn action-btn--danger" />
+                            </ui:VisualElement>
+                            <ui:Slider name="sld-water-radius" label="Water Rad" low-value="5" high-value="120" value="30" show-input-field="true" class="field" />
+                            <ui:FloatField name="fld-water-level" label="Water Y" value="12" class="field" />
+                        </ui:VisualElement>
+
+                        <!-- PAINT (BIOMES) POPOVER -->
+                        <ui:VisualElement name="pop-paint" class="popover-body hidden">
+                            <ui:DropdownField name="dd-biome-preset" label="Biome" choices="Alpine,TemperateForest,AridDesert,Coastal" index="0" class="field" />
+                            <ui:Toggle name="tgl-rule-height" label="Height Rules" value="true" class="field" />
+                            <ui:Toggle name="tgl-rule-slope" label="Slope Rules" value="true" class="field" />
+                            <ui:Toggle name="tgl-rule-worldpos" label="World Pos" value="true" class="field" />
+                            <ui:Slider name="sld-layer-blend" label="Blend" low-value="0.1" high-value="1" value="0.85" show-input-field="true" class="field" />
+                            <ui:Button name="btn-paint-terrain" text="Auto-Paint Terrain" class="action-btn action-btn--primary" />
+                        </ui:VisualElement>
+
+                        <!-- NATURE (VEGETATION) POPOVER -->
+                        <ui:VisualElement name="pop-nature" class="popover-body hidden">
+                            <ui:DropdownField name="dd-veg-preset" label="Preset" choices="DenseForest,Savanna,AlpineSparse,Wetlands" index="0" class="field" />
+                            <ui:Toggle name="tgl-place-trees" label="Trees" value="true" class="field" />
+                            <ui:Toggle name="tgl-place-grass" label="Grass" value="true" class="field" />
+                            <ui:Toggle name="tgl-biome-dist" label="Biome Dist" value="true" class="field" />
+                            <ui:Slider name="sld-veg-density" label="Density" low-value="0" high-value="1" value="0.7" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-tree-dist" label="Tree Dist" low-value="50" high-value="2000" value="500" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-grass-dist" label="Grass Dist" low-value="10" high-value="300" value="80" show-input-field="true" class="field" />
+                            <ui:Toggle name="tgl-veg-shadows" label="Shadows" value="true" class="field" />
+                            <ui:Button name="btn-populate-veg" text="Grow Vegetation" class="action-btn action-btn--green" />
+                            <ui:Button name="btn-clear-veg" text="Clear Vegetation" class="action-btn action-btn--danger" />
+                        </ui:VisualElement>
+
+                        <!-- SETTINGS (WORLD GEN, EXPANSION & SAVE/LOAD) POPOVER -->
+                        <ui:VisualElement name="pop-settings" class="popover-body hidden">
+                            <ui:Label text="Terrain Generation" class="sub-header" />
+                            <ui:DropdownField name="dd-heightmap-res" label="Resolution" choices="129,257,513,1025,2049" index="2" class="field" />
+                            <ui:IntegerField name="fld-terrain-size" label="Chunk Size" value="256" class="field" />
+                            <ui:FloatField name="fld-max-height" label="Max Height" value="120" class="field" />
+                            <ui:IntegerField name="fld-seed" label="Seed" value="12345" class="field" />
+                            <ui:Button name="btn-generate-terrain" text="Generate Terrain" class="action-btn action-btn--primary" />
+
+                            <ui:Label text="Expand World (X / Z)" class="sub-header" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-expand-pos-z" text="+Z" class="action-btn action-btn--soft btn--grow" />
+                                <ui:Button name="btn-expand-neg-z" text="-Z" class="action-btn action-btn--soft btn--grow" />
+                                <ui:Button name="btn-expand-pos-x" text="+X" class="action-btn action-btn--soft btn--grow" />
+                                <ui:Button name="btn-expand-neg-x" text="-X" class="action-btn action-btn--soft btn--grow" />
+                            </ui:VisualElement>
+                            <ui:Button name="btn-verify-continuity" text="Verify Continuity" class="action-btn action-btn--soft" />
+
+                            <ui:Label text="Save &amp; Load" class="sub-header" />
+                            <ui:TextField name="txt-world-name" label="World" value="MyRuntimeWorld" class="field" />
+                            <ui:Toggle name="tgl-compress-chunks" label="Compress Chunks" value="true" class="field" />
+                            <ui:Toggle name="tgl-restore-stamps" label="Restore Stamps" value="true" class="field" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-save-world" text="Save" class="action-btn action-btn--primary btn--grow" />
+                                <ui:Button name="btn-load-world" text="Load" class="action-btn action-btn--soft btn--grow" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                    </ui:ScrollView>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- TOP-RIGHT MINI MAP + LAYERS TOGGLE -->
+            <ui:VisualElement name="right-cluster" class="right-cluster" picking-mode="Ignore">
+                <ui:VisualElement name="minimap-card" class="minimap-card">
+                    <ui:VisualElement name="minimap-viewport" class="minimap-viewport">
+                        <ui:Label name="lbl-chunk-count" text="Chunks: 1" class="minimap-badge" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="minimap-controls">
+                        <ui:Button name="btn-map-zoom-in" text="+" class="map-btn" />
+                        <ui:Button name="btn-map-zoom-out" text="-" class="map-btn" />
+                        <ui:Button name="btn-map-recenter" text="⌖" class="map-btn" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:Button name="btn-toggle-layers" class="layers-pill-btn">
+                    <ui:VisualElement class="btn-icon icon-layers" />
+                    <ui:Label text="Layers" class="btn-lbl" />
+                </ui:Button>
+
+                <ui:VisualElement name="layers-popover" class="layers-popover hidden">
+                    <ui:Label text="World Layers" class="sub-header" />
+                    <ui:Toggle name="tgl-layer-terrain" label="Terrain" value="true" class="field" />
+                    <ui:Toggle name="tgl-layer-water" label="Water" value="true" class="field" />
+                    <ui:Toggle name="tgl-layer-roads" label="Roads" value="true" class="field" />
+                    <ui:Toggle name="tgl-layer-veg" label="Vegetation" value="true" class="field" />
+                    <ui:Toggle name="tgl-layer-buildings" label="Buildings" value="true" class="field" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- CENTERED "ADD TO ASSET LIBRARY" MODAL -->
+        <ui:VisualElement name="add-library-modal-backdrop" class="modal-backdrop hidden">
+            <ui:VisualElement name="add-library-modal" class="modal-card">
+                <ui:VisualElement class="modal-header">
+                    <ui:Label text="Add to Asset Library" class="modal-title" />
+                    <ui:Button name="btn-close-modal" text="✕" class="icon-btn" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="modal-body">
+                    <ui:VisualElement class="modal-form">
+                        <ui:DropdownField name="dd-new-item-category" label="Category" choices="Hills,Roads,Rivers,Trees,Grass,Rocks,Textures,Buildings" index="7" class="field" />
+                        <ui:TextField name="txt-new-item-name" label="Name" value="Stone Cabin" class="field" />
+                        <ui:VisualElement class="browse-row">
+                            <ui:TextField name="txt-new-item-asset" label="Prefab/Asset" value="StoneCabin.prefab" class="field browse-field" />
+                            <ui:Button name="btn-browse-asset" text="Browse" class="action-btn action-btn--soft" />
+                        </ui:VisualElement>
+                        <ui:Toggle name="tgl-new-item-snap" label="Snap to Ground" value="true" class="field" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="modal-preview-box">
+                        <ui:Label text="Preview" class="preview-caption" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="modal-footer">
+                    <ui:Button name="btn-cancel-modal" text="Cancel" class="action-btn action-btn--soft" />
+                    <ui:Button name="btn-confirm-add-item" text="Add Item" class="action-btn action-btn--primary" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- BOTTOM ASSET LIBRARY BAR -->
+        <ui:VisualElement name="bottom-dock-wrap" class="bottom-dock-wrap" picking-mode="Ignore">
+            <ui:VisualElement name="asset-library-bar" class="asset-library-bar">
+                <ui:VisualElement class="library-header">
+                    <ui:Label text="ASSET LIBRARY" class="library-title" />
+                    <ui:Label name="lbl-status-msg" text="Ready" class="status-hint" />
+                    <ui:Button name="btn-minimize-library" text="⌄" class="icon-btn" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="library-content" class="library-content">
+                    <ui:VisualElement class="library-tabs-row">
+                        <ui:VisualElement class="library-tabs">
+                            <ui:Button name="lib-tab-hills" text="Hills" class="lib-tab lib-tab--active" />
+                            <ui:Button name="lib-tab-roads" text="Roads" class="lib-tab" />
+                            <ui:Button name="lib-tab-rivers" text="Rivers" class="lib-tab" />
+                            <ui:Button name="lib-tab-trees" text="Trees" class="lib-tab" />
+                            <ui:Button name="lib-tab-grass" text="Grass" class="lib-tab" />
+                            <ui:Button name="lib-tab-rocks" text="Rocks" class="lib-tab" />
+                            <ui:Button name="lib-tab-textures" text="Textures" class="lib-tab" />
+                            <ui:Button name="lib-tab-buildings" text="Buildings" class="lib-tab" />
+                        </ui:VisualElement>
+                        <ui:Button name="btn-open-add-modal" text="+ Add" class="add-lib-btn" />
+                    </ui:VisualElement>
+
+                    <ui:ScrollView name="library-cards-scroll" mode="Horizontal" horizontal-scroller-visibility="Auto" class="library-cards-scroll">
+                        <ui:VisualElement name="library-cards-container" class="library-cards-container" />
+                    </ui:ScrollView>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>
