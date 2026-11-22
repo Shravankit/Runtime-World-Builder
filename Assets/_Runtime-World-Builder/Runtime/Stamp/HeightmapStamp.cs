@@ -51,6 +51,8 @@ namespace RuntimeWorldBuilder.Runtime.Stamp
             var data = new float[px.Length];
             for (int i = 0; i < px.Length; i++) data[i] = px[i].r;
 
+            SmoothIfQuantized(data, w, h);
+
             return shared[tex] = new HeightCache { data = data, w = w, h = h };
         }
         public void BuildCache()
@@ -120,6 +122,33 @@ namespace RuntimeWorldBuilder.Runtime.Stamp
             result01 = Mathf.Clamp01(nv);
             weight = w;
             return true;
+        }
+
+        // 8-bit sources have <=256 distinct heights => visible terraces. Blur them away once, at cache build.
+        static void SmoothIfQuantized(float[] d, int w, int h)
+        {
+            var seen = new HashSet<float>();
+            foreach (var v in d) { seen.Add(v); if (seen.Count > 300) return; }   // real 16-bit data: leave alone
+
+            const int R = 3, Passes = 4;                                          // raise for smoother, lower to keep detail
+            var tmp = new float[d.Length];
+            for (int p = 0; p < Passes; p++)
+            {
+                for (int z = 0; z < h; z++)                                       // horizontal
+                    for (int x = 0; x < w; x++)
+                    {
+                        float s = 0; int n = 0;
+                        for (int k = -R; k <= R; k++) { int xx = x + k; if (xx < 0 || xx >= w) continue; s += d[z * w + xx]; n++; }
+                        tmp[z * w + x] = s / n;
+                    }
+                for (int z = 0; z < h; z++)                                       // vertical
+                    for (int x = 0; x < w; x++)
+                    {
+                        float s = 0; int n = 0;
+                        for (int k = -R; k <= R; k++) { int zz = z + k; if (zz < 0 || zz >= h) continue; s += tmp[zz * w + x]; n++; }
+                        d[z * w + x] = s / n;
+                    }
+            }
         }
     }
 }

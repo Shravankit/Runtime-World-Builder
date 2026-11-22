@@ -506,6 +506,7 @@ MonoBehaviour:
   vegetationSettings: {fileID: 11400000, guid: 80a2673a13d6d984f970f77fc10c63bf, type: 2}
   library: {fileID: 11400000, guid: a8bcf8abecd8b624b82e8d989eb134f9, type: 2}
   slot: slot1
+  uiDocument: {fileID: 124177039}
 --- !u!114 &2064476716
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -538,6 +539,7 @@ MonoBehaviour:
     y: 10
     width: 320
     height: 400
+  uiDocument: {fileID: 124177039}
 --- !u!114 &2064476717
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -550,6 +552,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 136df85765e75d04f9743cd819fde7ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  uiDocument: {fileID: 124177039}
 --- !u!114 &2064476718
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -583,12 +586,7 @@ MonoBehaviour:
   valleyDepth: 20
   flattenRadius: 40
   stamper: {fileID: 2064476716}
-  panelRect:
-    serializedVersion: 2
-    x: 10
-    y: 420
-    width: 330
-    height: 400
+  uiDocument: {fileID: 124177039}
 --- !u!114 &2064476719
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -603,12 +601,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   library: {fileID: 11400000, guid: a8bcf8abecd8b624b82e8d989eb134f9, type: 2}
   tester: {fileID: 2064476715}
-  panelRect:
-    serializedVersion: 2
-    x: 340
-    y: 10
-    width: 330
-    height: 410
+  uiDocument: {fileID: 124177039}
+  path: 
+  bigEndian: 0
+  flipY: 0
+  clearModels: 1
+  sizeX: 1024
+  sizeZ: 1024
+  heightM: 1000
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

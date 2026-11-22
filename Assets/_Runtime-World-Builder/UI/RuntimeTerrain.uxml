@@ -164,6 +164,14 @@
                             <ui:Toggle name="tgl-biome-dist" label="Biome Dist" value="true" class="field" />
                             <ui:Slider name="sld-veg-density" label="Density" low-value="0" high-value="1" value="0.7" show-input-field="true" class="field" />
                             <ui:Slider name="sld-tree-dist" label="Tree Dist" low-value="50" high-value="2000" value="500" show-input-field="true" class="field" />
+                            <ui:Slider
+                                name="sld-tree-billboard-dist"
+                                label="Billboard Dist"
+                                low-value="0"
+                                high-value="500"
+                                value="200"
+                                show-input-field="true"
+                                class="field" />
                             <ui:Slider name="sld-grass-dist" label="Grass Dist" low-value="10" high-value="300" value="80" show-input-field="true" class="field" />
                             <ui:Toggle name="tgl-veg-shadows" label="Shadows" value="true" class="field" />
                             <ui:Button name="btn-populate-veg" text="Grow Vegetation" class="action-btn action-btn--green" />
@@ -172,12 +180,118 @@
 
                         <!-- SETTINGS (WORLD GEN, EXPANSION & SAVE/LOAD) POPOVER -->
                         <ui:VisualElement name="pop-settings" class="popover-body hidden">
+                            <!-- HEIGHTMAP IMPORT -->
+                            <ui:Label text="Heightmap Import" class="sub-header" />
+
+                            <!-- Hidden backing field: the selected path is set by the native file picker. -->
+                            <ui:TextField name="fld-heightmap-path" value="" class="hidden" />
+                            <ui:VisualElement class="file-picker-row">
+                                <ui:Label name="lbl-heightmap-file" text="No heightmap selected" class="file-picker-name" />
+                                <ui:Button name="btn-heightmap-browse" text="Browse..." class="action-btn action-btn--soft" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button
+                                    name="btn-heightmap-import"
+                                    text="Import &amp; Build"
+                                    class="action-btn action-btn--primary btn--grow" />
+                            </ui:VisualElement>
+
+                            <ui:Toggle
+                                name="tgl-heightmap-big-endian"
+                                label="RAW Big Endian"
+                                value="false"
+                                class="field" />
+
+                            <ui:Toggle
+                                name="tgl-heightmap-flip-y"
+                                label="RAW Flip Vertical"
+                                value="false"
+                                class="field" />
+
+                            <ui:Label text="Imported Heightmaps" class="sub-header" />
+
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button
+                                    name="btn-heightmap-previous"
+                                    text="‹"
+                                    class="action-btn action-btn--soft" />
+
+                                <ui:Label
+                                    name="lbl-selected-heightmap"
+                                    text="Selected: (none)"
+                                    class="field" />
+
+                                <ui:Button
+                                    name="btn-heightmap-next"
+                                    text="›"
+                                    class="action-btn action-btn--soft" />
+                            </ui:VisualElement>
+
+                            <ui:Label text="Terrain Dimensions" class="sub-header" />
+
+                            <ui:Slider
+                                name="sld-heightmap-width"
+                                label="Width (m)"
+                                low-value="256"
+                                high-value="4096"
+                                value="1024"
+                                show-input-field="true"
+                                class="field" />
+
+                            <ui:Slider
+                                name="sld-heightmap-length"
+                                label="Length (m)"
+                                low-value="256"
+                                high-value="4096"
+                                value="1024"
+                                show-input-field="true"
+                                class="field" />
+
+                            <ui:Slider
+                                name="sld-heightmap-height"
+                                label="Height (m)"
+                                low-value="10"
+                                high-value="1000"
+                                value="1000"
+                                show-input-field="true"
+                                class="field" />
+
+                            <ui:Toggle
+                                name="tgl-heightmap-clear-models"
+                                label="Clear placed trees/models"
+                                value="true"
+                                class="field" />
+
+                            <ui:Button
+                                name="btn-heightmap-build"
+                                text="Build Terrain From Selected Heightmap"
+                                class="action-btn action-btn--primary" />
+
+                            <ui:Label
+                                name="lbl-heightmap-status"
+                                text="Ready"
+                                class="status-hint" />
+
+                            <ui:VisualElement
+                                class="section-divider" />
                             <ui:Label text="Terrain Generation" class="sub-header" />
                             <ui:DropdownField name="dd-heightmap-res" label="Resolution" choices="129,257,513,1025,2049" index="2" class="field" />
                             <ui:IntegerField name="fld-terrain-size" label="Chunk Size" value="256" class="field" />
                             <ui:FloatField name="fld-max-height" label="Max Height" value="120" class="field" />
                             <ui:IntegerField name="fld-seed" label="Seed" value="12345" class="field" />
                             <ui:Button name="btn-generate-terrain" text="Generate Terrain" class="action-btn action-btn--primary" />
+
+                            <ui:Label text="Terrain Testing" class="sub-header" />
+                            
+                            <ui:Button
+                                name="btn-edit-chunk"
+                                text="Edit Chunk (0,0)"
+                                class="action-btn action-btn--primary" />
+                            
+                            <ui:Label
+                                name="lbl-tester-status"
+                                text="Press Edit Chunk (0,0) first."
+                                class="status-hint" />
 
                             <ui:Label text="Expand World (X / Z)" class="sub-header" />
                             <ui:VisualElement class="btn-row">

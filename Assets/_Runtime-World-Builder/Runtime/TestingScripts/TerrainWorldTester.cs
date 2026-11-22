@@ -1,55 +1,70 @@
 
 using System;
 using System.Collections.Generic;
-
 using RuntimeWorldBuilder.Core.Service;
 using RuntimeWorldBuilder.Data;
+using RuntimeWorldBuilder.Runtime.Stamp;
 using RuntimeWorldBuilder.Runtime.World;
 using RuntimeWorldBuilder.SO.Biomes;
 using RuntimeWorldBuilder.SO.HeightMap;
 using RuntimeWorldBuilder.SO.Settings;
 using RuntimeWorldBuilder.SO.Vegetation;
-
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace RuntimeWorldBuilder.Runtime.Testing
 {
     public class TerrainWorldTester : MonoBehaviour
     {
-        [SerializeField] TerrainSettings settings;
-        [SerializeField] TerrainBiomeSettings biomeSettings;
-        [SerializeField] VegetationSettings vegetationSettings;
-        [SerializeField] HeightmapLibrary library;
-        [SerializeField] string slot = "slot1";
+        [Header("Terrain References")]
+        [SerializeField] private TerrainSettings settings;
+        [SerializeField] private TerrainBiomeSettings biomeSettings;
+        [SerializeField] private VegetationSettings vegetationSettings;
+        [SerializeField] private HeightmapLibrary library;
 
-        TerrainWorld world;
+        [Header("Save Slot")]
+        [SerializeField] private string slot = "slot1";
 
-        Vector2Int editChunk = new(0, 0);
+        [Header("UI Toolkit")]
+        [SerializeField] private UIDocument uiDocument;
 
-        int editX;
-        int editZ;
+        private TerrainWorld world;
 
-        float editValue = -1f;
+        private Vector2Int editChunk = new Vector2Int(0, 0);
 
-        double checksumBefore = -1;
+        private int editX;
+        private int editZ;
 
-        string status = "Press 'Edit chunk (0,0)' first.";
+        private float editValue = -1f;
+        private double checksumBefore = -1;
+
+        private string status = "Press Edit Chunk (0,0) first.";
+
+        private VisualElement root;
+        private TextField worldNameField;
+        private Label statusLabel;
+        private Button undoButton;
+        private Button redoButton;
+
+        private bool uiInitialized;
 
         // --------------------------------------------------
         // INITIALIZATION
         // --------------------------------------------------
 
-        void Start()
+        private void Start()
         {
             if (settings == null)
             {
                 Debug.LogError("TerrainSettings is not assigned.");
+                SetStatus("TerrainSettings is missing.");
                 return;
             }
 
             if (biomeSettings == null)
             {
                 Debug.LogError("TerrainBiomeSettings is not assigned.");
+                SetStatus("TerrainBiomeSettings is missing.");
                 return;
             }
 
@@ -64,16 +79,95 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 ServiceRegistry.Register(settings);
                 ServiceRegistry.Register(world);
 
+                InitializeUI();
                 FrameCamera();
+                RefreshUndoRedoButtons();
+                SetStatus(status);
             }
             catch (Exception e)
             {
                 Debug.LogError("Terrain initialization failed: " + e);
-                status = "Terrain initialization failed.";
+                SetStatus("Terrain initialization failed. Check Console.");
             }
         }
 
-        void Update()
+        private void InitializeUI()
+        {
+            if (uiDocument == null)
+                uiDocument = FindFirstObjectByType<UIDocument>();
+
+            if (uiDocument == null)
+            {
+                Debug.LogError(
+                    "[TerrainWorldTester] No UIDocument found."
+                );
+                return;
+            }
+
+            root = uiDocument.rootVisualElement;
+
+            // Settings controls
+            RegisterButton("btn-edit-chunk", EditChunk);
+
+            RegisterButton("btn-expand-pos-x",
+                () => Extend(0, 1, 0, 0));
+
+            RegisterButton("btn-expand-neg-x",
+                () => Extend(1, 0, 0, 0));
+
+            RegisterButton("btn-expand-pos-z",
+                () => Extend(0, 0, 0, 1));
+
+            RegisterButton("btn-expand-neg-z",
+                () => Extend(0, 0, 1, 0));
+
+            RegisterButton("btn-verify-continuity", Verify);
+
+            RegisterButton("btn-save-world", SaveWorld);
+            RegisterButton("btn-load-world", LoadWorld);
+
+            // Top bar controls
+            RegisterButton("btn-quick-save", SaveWorld);
+            RegisterButton("btn-quick-load", LoadWorld);
+
+            undoButton = root.Q<Button>("btn-undo");
+            redoButton = root.Q<Button>("btn-redo");
+
+            if (undoButton != null)
+                undoButton.clicked += DoUndo;
+
+            if (redoButton != null)
+                redoButton.clicked += DoRedo;
+
+            worldNameField = root.Q<TextField>("txt-world-name");
+            statusLabel = root.Q<Label>("lbl-tester-status");
+
+            if (worldNameField != null)
+                worldNameField.value = slot;
+
+            uiInitialized = true;
+        }
+
+        private void RegisterButton(string elementName, Action callback)
+        {
+            Button button = root.Q<Button>(elementName);
+
+            if (button == null)
+            {
+                Debug.LogWarning(
+                    $"[TerrainWorldTester] UI button '{elementName}' not found."
+                );
+                return;
+            }
+
+            button.clicked += callback;
+        }
+
+        // --------------------------------------------------
+        // UPDATE / KEYBOARD SHORTCUTS
+        // --------------------------------------------------
+
+        private void Update()
         {
             if (world == null)
                 return;
@@ -87,6 +181,12 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 Input.GetKey(KeyCode.RightCommand);
 
             if (!ctrl)
+                return;
+
+            // Don't trigger shortcuts while editing a text field.
+            if (uiInitialized &&
+                root != null &&
+                root.focusController.focusedElement is TextField)
                 return;
 
             bool shift =
@@ -116,19 +216,19 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         {
             if (settings == null)
             {
-                Debug.LogError("Cannot rebuild: TerrainSettings is missing.");
+                SetStatus("Cannot rebuild: TerrainSettings is missing.");
                 return null;
             }
 
             if (biomeSettings == null)
             {
-                Debug.LogError("Cannot rebuild: TerrainBiomeSettings is missing.");
+                SetStatus("Cannot rebuild: TerrainBiomeSettings is missing.");
                 return null;
             }
 
             if (min.x > max.x || min.y > max.y)
             {
-                Debug.LogError("Invalid terrain world bounds.");
+                SetStatus("Invalid terrain world bounds.");
                 return null;
             }
 
@@ -136,25 +236,22 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
             try
             {
-                // Construct the new world with the requested bounds.
-                // Empty saved data means chunks are generated normally.
                 newWorld = new TerrainWorld(
                     settings,
                     biomeSettings,
                     min,
                     max,
                     new Dictionary<Vector2Int, float[,]>(),
-                    new List<RuntimeWorldBuilder.Runtime.Stamp.HeightmapStamp>(),
+                    new List<HeightmapStamp>(),
                     vegetationSettings
                 );
 
                 if (newWorld == null)
                 {
-                    Debug.LogError("New terrain world could not be created.");
+                    SetStatus("New terrain world could not be created.");
                     return null;
                 }
 
-                // Only destroy the old world after the new one is created.
                 TerrainWorld oldWorld = world;
 
                 world = newWorld;
@@ -170,10 +267,9 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
                 FrameCamera();
 
-                status =
-                    $"World rebuilt: {world.Min} -> {world.Max}";
-
-                Debug.Log(status);
+                SetStatus(
+                    $"World rebuilt: {world.Min} -> {world.Max}"
+                );
 
                 return world;
             }
@@ -184,7 +280,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 if (newWorld != null && newWorld != world)
                     newWorld.DestroyAll();
 
-                status = "World rebuild failed. Check Console.";
+                SetStatus("World rebuild failed. Check Console.");
 
                 return null;
             }
@@ -194,7 +290,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         // CAMERA
         // --------------------------------------------------
 
-        void FrameCamera()
+        private void FrameCamera()
         {
             if (world == null || settings == null)
                 return;
@@ -227,79 +323,77 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 cz - span * 0.6f
             );
 
-            cam.transform.LookAt(
-                new Vector3(cx, 0, cz)
-            );
+            cam.transform.LookAt(new Vector3(cx, 0, cz));
         }
 
         // --------------------------------------------------
         // EDIT CHUNK
         // --------------------------------------------------
 
-        void EditChunk()
+        private void EditChunk()
         {
             if (world == null)
                 return;
 
-            if (!world.TryGetChunk(editChunk, out var c))
+            if (!world.TryGetChunk(editChunk, out var chunk))
             {
-                status = "Chunk (0,0) missing.";
+                SetStatus("Chunk (0,0) missing.");
                 return;
             }
 
-            int res = settings.heightmapResolution;
+            int resolution = settings.heightmapResolution;
 
-            editX = res / 2;
-            editZ = res / 2;
+            editX = resolution / 2;
+            editZ = resolution / 2;
 
             int radius = 25;
 
             world.BeginEdit("Bump");
-
-            world.Touch(c);
+            world.Touch(chunk);
 
             for (int z = -radius; z <= radius; z++)
             {
                 for (int x = -radius; x <= radius; x++)
                 {
-                    float d =
+                    float distance =
                         Mathf.Sqrt(x * x + z * z) / radius;
 
-                    if (d > 1f)
+                    if (distance > 1f)
                         continue;
 
-                    c.Heights[editZ + z, editX + x] +=
-                        (1f - d) * 0.4f;
+                    chunk.Heights[editZ + z, editX + x] +=
+                        (1f - distance) * 0.4f;
                 }
             }
 
-            c.Heights[editZ, editX] =
-                Mathf.Clamp01(c.Heights[editZ, editX]);
+            chunk.Heights[editZ, editX] =
+                Mathf.Clamp01(chunk.Heights[editZ, editX]);
 
-            world.CommitChunk(c);
+            world.CommitChunk(chunk);
             world.EndEdit();
 
-            editValue = c.Heights[editZ, editX];
+            editValue = chunk.Heights[editZ, editX];
+            checksumBefore = Checksum(chunk);
 
-            checksumBefore = Checksum(c);
+            SetStatus(
+                $"Edited chunk (0,0). Center height = {editValue:F4}"
+            );
 
-            status =
-                $"Edited chunk (0,0). Center height = {editValue:F4}";
+            RefreshUndoRedoButtons();
         }
 
         // --------------------------------------------------
         // EXTEND WORLD
         // --------------------------------------------------
 
-        void Extend(int l, int r, int d, int u)
+        private void Extend(int left, int right, int down, int up)
         {
             if (world == null)
                 return;
 
-            world.Extend(l, r, d, u);
+            world.Extend(left, right, down, up);
 
             FrameCamera();
-
             Verify();
         }
 
@@ -307,52 +401,50 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         // VERIFY WORLD
         // --------------------------------------------------
 
-        void Verify()
+        private void Verify()
         {
             if (world == null)
                 return;
 
-            string msg =
+            string message =
                 $"Extent {world.Min} -> {world.Max}\n";
 
             if (editValue >= 0 &&
-                world.TryGetChunk(editChunk, out var c))
+                world.TryGetChunk(editChunk, out var chunk))
             {
                 float live =
-                    c.Terrain.terrainData.GetHeights(
+                    chunk.Terrain.terrainData.GetHeights(
                         editX,
                         editZ,
                         1,
                         1
                     )[0, 0];
 
-                double sumNow = Checksum(c);
+                double sumNow = Checksum(chunk);
 
                 bool same =
                     Mathf.Abs(live - editValue) < 1e-5f &&
                     Math.Abs(sumNow - checksumBefore) < 1e-4;
 
-                msg +=
-                    $"Old edit preserved: " +
+                message +=
+                    "Old edit preserved: " +
                     $"{(same ? "PASS" : "FAIL")} " +
                     $"(live {live:F4}, expected {editValue:F4})\n";
             }
 
             float seamGap = MaxSeamGap();
 
-            msg +=
+            message +=
                 $"Max seam gap: {seamGap:F6} " +
                 (seamGap < 1e-5f ? "(PASS)" : "(FAIL)");
 
-            status = msg;
-
-            Debug.Log(msg);
+            SetStatus(message);
         }
 
-        double Checksum(TerrainChunkData c)
+        private double Checksum(TerrainChunkData chunk)
         {
             var heights =
-                c.Terrain.terrainData.GetHeights(
+                chunk.Terrain.terrainData.GetHeights(
                     0,
                     0,
                     settings.heightmapResolution,
@@ -361,19 +453,19 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
             double sum = 0;
 
-            foreach (var value in heights)
+            foreach (float value in heights)
                 sum += value;
 
             return sum;
         }
 
-        float MaxSeamGap()
+        private float MaxSeamGap()
         {
             if (world == null)
                 return 0f;
 
-            int res = settings.heightmapResolution;
-            int last = res - 1;
+            int resolution = settings.heightmapResolution;
+            int last = resolution - 1;
 
             float max = 0f;
 
@@ -382,50 +474,52 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 for (int x = world.Min.x; x <= world.Max.x; x++)
                 {
                     if (!world.TryGetChunk(
-                            new Vector2Int(x, z),
-                            out var a))
+                        new Vector2Int(x, z),
+                        out var a))
                         continue;
 
-                    var ha =
+                    var heightsA =
                         a.Terrain.terrainData.GetHeights(
-                            0, 0, res, res
+                            0, 0, resolution, resolution
                         );
 
                     if (world.TryGetChunk(
-                            new Vector2Int(x + 1, z),
-                            out var right))
+                        new Vector2Int(x + 1, z),
+                        out var right))
                     {
-                        var hr =
+                        var heightsRight =
                             right.Terrain.terrainData.GetHeights(
-                                0, 0, res, res
+                                0, 0, resolution, resolution
                             );
 
-                        for (int i = 0; i < res; i++)
+                        for (int i = 0; i < resolution; i++)
                         {
                             max = Mathf.Max(
                                 max,
                                 Mathf.Abs(
-                                    ha[i, last] - hr[i, 0]
+                                    heightsA[i, last] -
+                                    heightsRight[i, 0]
                                 )
                             );
                         }
                     }
 
                     if (world.TryGetChunk(
-                            new Vector2Int(x, z + 1),
-                            out var up))
+                        new Vector2Int(x, z + 1),
+                        out var up))
                     {
-                        var hu =
+                        var heightsUp =
                             up.Terrain.terrainData.GetHeights(
-                                0, 0, res, res
+                                0, 0, resolution, resolution
                             );
 
-                        for (int i = 0; i < res; i++)
+                        for (int i = 0; i < resolution; i++)
                         {
                             max = Mathf.Max(
                                 max,
                                 Mathf.Abs(
-                                    ha[last, i] - hu[0, i]
+                                    heightsA[last, i] -
+                                    heightsUp[0, i]
                                 )
                             );
                         }
@@ -440,22 +534,43 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         // SAVE / LOAD
         // --------------------------------------------------
 
-        void SaveWorld()
+        private void UpdateSlotFromUI()
+        {
+            if (worldNameField != null &&
+                !string.IsNullOrWhiteSpace(worldNameField.value))
+            {
+                slot = worldNameField.value.Trim();
+            }
+        }
+
+        private void SaveWorld()
         {
             if (world == null)
+            {
+                SetStatus("No terrain world to save.");
                 return;
+            }
+
+            UpdateSlotFromUI();
 
             TerrainSerializer.Save(
                 world,
                 settings,
                 slot
             );
+
+            SetStatus($"Saved world '{slot}'.");
         }
 
-        void LoadWorld()
+        private void LoadWorld()
         {
             if (world == null)
+            {
+                SetStatus("No terrain world available.");
                 return;
+            }
+
+            UpdateSlotFromUI();
 
             TerrainWorld loaded = TerrainSerializer.Load(
                 slot,
@@ -467,7 +582,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
             if (loaded == null)
             {
-                status = "Load failed, see Console.";
+                SetStatus("Load failed. Check Console.");
                 return;
             }
 
@@ -480,16 +595,20 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             FrameCamera();
 
             editValue = -1f;
+            checksumBefore = -1;
 
-            status =
-                $"Loaded '{slot}' extent {world.Min} -> {world.Max}";
+            SetStatus(
+                $"Loaded '{slot}' extent {world.Min} -> {world.Max}"
+            );
+
+            RefreshUndoRedoButtons();
         }
 
         // --------------------------------------------------
         // UNDO / REDO
         // --------------------------------------------------
 
-        void DoUndo()
+        private void DoUndo()
         {
             if (world == null)
                 return;
@@ -500,13 +619,16 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             {
                 editValue = -1f;
 
-                status =
+                SetStatus(
                     $"Undo: {label}\n" +
-                    $"Extent {world.Min} -> {world.Max}";
+                    $"Extent {world.Min} -> {world.Max}"
+                );
             }
+
+            RefreshUndoRedoButtons();
         }
 
-        void DoRedo()
+        private void DoRedo()
         {
             if (world == null)
                 return;
@@ -517,76 +639,46 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             {
                 editValue = -1f;
 
-                status =
+                SetStatus(
                     $"Redo: {label}\n" +
-                    $"Extent {world.Min} -> {world.Max}";
+                    $"Extent {world.Min} -> {world.Max}"
+                );
             }
+
+            RefreshUndoRedoButtons();
+        }
+
+        private void RefreshUndoRedoButtons()
+        {
+            if (undoButton != null)
+                undoButton.SetEnabled(world != null && world.CanUndo);
+
+            if (redoButton != null)
+                redoButton.SetEnabled(world != null && world.CanRedo);
+        }
+
+        // --------------------------------------------------
+        // STATUS
+        // --------------------------------------------------
+
+        private void SetStatus(string message)
+        {
+            status = message;
+
+            if (statusLabel != null)
+                statusLabel.text = message;
+
+            Debug.Log("[TerrainWorldTester] " + message);
         }
 
         // --------------------------------------------------
         // CLEANUP
         // --------------------------------------------------
 
-        void OnDestroy()
+        private void OnDestroy()
         {
             ServiceRegistry.UnRegister<TerrainWorld>();
             ServiceRegistry.UnRegister<TerrainSettings>();
-        }
-
-        // --------------------------------------------------
-        // GUI
-        // --------------------------------------------------
-
-        void OnGUI()
-        {
-            if (world == null)
-                return;
-
-            GUILayout.BeginArea(
-                new Rect(10, 10, 320, 400)
-            );
-
-            if (GUILayout.Button("Edit chunk (0,0)"))
-                EditChunk();
-
-            if (GUILayout.Button("Extend +X"))
-                Extend(0, 1, 0, 0);
-
-            if (GUILayout.Button("Extend -X"))
-                Extend(1, 0, 0, 0);
-
-            if (GUILayout.Button("Extend +Z"))
-                Extend(0, 0, 0, 1);
-
-            if (GUILayout.Button("Extend -Z"))
-                Extend(0, 0, 1, 0);
-
-            if (GUILayout.Button("Verify now"))
-                Verify();
-
-            if (GUILayout.Button("Save"))
-                SaveWorld();
-
-            if (GUILayout.Button("Load"))
-                LoadWorld();
-
-            GUI.enabled = world.CanUndo;
-
-            if (GUILayout.Button(
-                    $"Undo {world.UndoLabel} (Ctrl+Z)"))
-                DoUndo();
-
-            GUI.enabled = world.CanRedo;
-
-            if (GUILayout.Button(
-                    $"Redo {world.RedoLabel} (Ctrl+Y)"))
-                DoRedo();
-
-            GUI.enabled = true;
-
-            GUILayout.Label(status);
-
-            GUILayout.EndArea();
         }
     }
 }

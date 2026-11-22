@@ -5,6 +5,7 @@ using RuntimeWorldBuilder.Runtime.World;
 using RuntimeWorldBuilder.SO.HeightMap;
 using RuntimeWorldBuilder.SO.Settings;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace RuntimeWorldBuilder.Runtime.Testing
 {
@@ -35,6 +36,20 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         [Header("UI")]
         [Tooltip("Screen rect (top-left origin) of the tester's button panel, so clicks on it don't place stamps")]
         [SerializeField] Rect testerPanelRect = new(10, 10, 320, 400);
+
+        [Header("UI Toolkit")]
+        [SerializeField] private UIDocument uiDocument;
+
+        private VisualElement uiRoot;
+        private bool isPointerOverUI;
+
+        public Vector2 StampSize => size;
+        public float StampHeight => heightMeters;
+        public float StampRotation => yaw;
+        public float StampStrength => strength;
+        public float StampFalloff => edgeFalloff;
+        public StampBlend CurrentBlend => blend;
+        public bool IsAspectLocked => lockAspect;
 
         const int N = 48;
         static readonly string[] blendNames = System.Enum.GetNames(typeof(StampBlend));
@@ -122,6 +137,8 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         {
             if (library != null) foreach (var t in library.textures) HeightmapStamp.Warm(t);
             if (heightmap != null) HeightmapStamp.Warm(heightmap);
+
+            InitializeUIToolkit();
         }
 
         void Select(int i)
@@ -136,8 +153,21 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
         bool OverUI()
         {
-            var p = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
-            return paletteRect.Contains(p) || panelRect.Contains(p) || testerPanelRect.Contains(p) || RuntimeWorldBuilder.Runtime.Features.FeaturePlacer.Active;
+            if (uiDocument == null || uiDocument.rootVisualElement == null)
+                return false;
+
+            var panel = uiDocument.rootVisualElement.panel;
+
+            if (panel == null)
+                return false;
+
+            Vector2 panelPosition =
+                RuntimePanelUtils.ScreenToPanel(panel, Input.mousePosition);
+
+            VisualElement pickedElement = panel.Pick(panelPosition);
+
+            return pickedElement != null &&
+                   pickedElement.pickingMode != PickingMode.Ignore;
         }
 
         void Update()
@@ -303,95 +333,136 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         }
 
         // ---------- UI ----------
-        float Slider(string label, float v, float min, float max, string fmt = "F0")
+        void InitializeUIToolkit()
         {
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(label, GUILayout.Width(62));
-            v = GUILayout.HorizontalSlider(v, min, max);
-            GUILayout.Label(v.ToString(fmt), GUILayout.Width(44));
-            GUILayout.EndHorizontal();
-            return v;
-        }
+            if (uiDocument == null)
+                uiDocument = FindFirstObjectByType<UIDocument>();
 
-        void OnGUI()
-        {
-            DrawPanel();
-            DrawPalette();
-        }
-
-        void DrawPanel()
-        {
-            panelRect = new Rect(Screen.width - 310, 10, 300, 372);
-            GUILayout.BeginArea(panelRect, GUI.skin.box);
-            GUILayout.Label("Stamp");
-            GUI.changed = false;
-
-            yaw = Slider("Rotation", Mathf.Repeat(yaw, 360f), 0f, 360f);
-
-            float nx = Slider("Width", size.x, minSize, maxSize);
-            float nz = Slider("Length", size.y, minSize, maxSize);
-            if (nx != size.x)
-                size = lockAspect ? ClampSize(new Vector2(nx, size.y * (nx / size.x))) : new Vector2(nx, size.y);
-            else if (nz != size.y)
-                size = lockAspect ? ClampSize(new Vector2(size.x * (nz / size.y), nz)) : new Vector2(size.x, nz);
-            lockAspect = GUILayout.Toggle(lockAspect, "Lock aspect (width + length together)");
-
-            heightMeters = Slider("Height", heightMeters, 0f, maxHeightMeters);
-            edgeFalloff = Slider("Falloff", edgeFalloff, 0f, 0.5f, "F2");
-            strength = Slider("Strength", strength, 0f, 1f, "F2");
-
-            blend = (StampBlend)GUILayout.Toolbar((int)blend, blendNames);
-            invert = GUILayout.Toggle(invert, "Invert heightmap");
-
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("-90°")) yaw = Mathf.Repeat(yaw - 90f, 360f);
-            if (GUILayout.Button("+90°")) yaw = Mathf.Repeat(yaw + 90f, 360f);
-            if (GUILayout.Button("Swap W/L")) size = new Vector2(size.y, size.x);
-            if (GUILayout.Button("Reset"))
+            if (uiDocument == null)
             {
-                yaw = 0f; size = new Vector2(200, 200); heightMeters = 50f;
-                edgeFalloff = 0.15f; strength = 1f; invert = false;
-            }
-            GUILayout.EndHorizontal();
-
-            if (GUI.changed) dirty = true;
-
-            GUILayout.Label("Right-drag: rotate   Wheel: scale\nShift+wheel: width   Ctrl+wheel: length\nQ/E/T: rotate   R/F: height", GUI.skin.label);
-            GUILayout.EndArea();
-        }
-
-        void DrawPalette()
-        {
-            if (library == null || library.textures.Count == 0) return;
-
-            const float cell = 72f;
-            paletteRect = new Rect(340, Screen.height - cell - 70, Screen.width - 670, cell + 60);
-
-            GUILayout.BeginArea(paletteRect, GUI.skin.box);
-            GUILayout.Label($"Heightmap: {Current.name}   ([ ] or 1-9 to switch)");
-            scroll = GUILayout.BeginScrollView(scroll, GUILayout.Height(cell + 20));
-            GUILayout.BeginHorizontal();
-
-            for (int i = 0; i < library.textures.Count; i++)
-            {
-                var tex = library.textures[i];
-                if (tex == null) continue;
-
-                var prev = GUI.backgroundColor;
-                GUI.backgroundColor = i == index ? Color.yellow : Color.white;
-                bool clicked = GUILayout.Button(GUIContent.none, GUILayout.Width(cell), GUILayout.Height(cell));
-                GUI.backgroundColor = prev;
-
-                var r = GUILayoutUtility.GetLastRect();
-                GUI.DrawTexture(new Rect(r.x + 4, r.y + 4, r.width - 8, r.height - 8), tex, ScaleMode.ScaleToFit);
-                GUI.Label(new Rect(r.x + 6, r.y + 2, 30, 18), (i + 1).ToString());
-
-                if (clicked) Select(i);
+                Debug.LogError("HeightmapPlacer: UIDocument not found.");
+                return;
             }
 
-            GUILayout.EndHorizontal();
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
+            uiRoot = uiDocument.rootVisualElement;
+
+            BindStampUI();
+        }
+
+        void BindStampUI()
+        {
+            var scaleSlider = uiRoot.Q<Slider>("sld-stamp-scale");
+            var rotationSlider = uiRoot.Q<Slider>("sld-stamp-rotation");
+            var previewToggle = uiRoot.Q<Toggle>("tgl-stamp-preview");
+            var blendDropdown = uiRoot.Q<DropdownField>("dd-stamp-blend");
+
+            if (scaleSlider != null)
+            {
+                scaleSlider.RegisterValueChangedCallback(evt =>
+                {
+                    size = new Vector2(evt.newValue, evt.newValue);
+                    dirty = true;
+                });
+            }
+
+            if (rotationSlider != null)
+            {
+                rotationSlider.RegisterValueChangedCallback(evt =>
+                {
+                    yaw = evt.newValue;
+                    dirty = true;
+                });
+            }
+
+            if (previewToggle != null)
+            {
+                previewToggle.RegisterValueChangedCallback(evt =>
+                {
+                    showPredictedHeight = evt.newValue;
+                    dirty = true;
+                });
+            }
+
+            if (blendDropdown != null)
+            {
+                blendDropdown.RegisterValueChangedCallback(evt =>
+                {
+                    if (System.Enum.TryParse(evt.newValue, out StampBlend selected))
+                    {
+                        blend = selected;
+                        dirty = true;
+                    }
+                });
+            }
+
+            var applyButton = uiRoot.Q<Button>("btn-apply-stamp");
+
+            if (applyButton != null)
+            {
+                applyButton.clicked += ApplyStampAtCurrentPosition;
+            }
+        }
+
+        public void SetStampSize(float value)
+        {
+            size = ClampSize(new Vector2(value, value));
+            dirty = true;
+        }
+
+        public void SetStampHeight(float value)
+        {
+            heightMeters = Mathf.Clamp(value, 0f, maxHeightMeters);
+            dirty = true;
+        }
+
+        public void SetStampRotation(float value)
+        {
+            yaw = Mathf.Repeat(value, 360f);
+            dirty = true;
+        }
+
+        public void SetStampStrength(float value)
+        {
+            strength = Mathf.Clamp01(value);
+            dirty = true;
+        }
+
+        public void SetStampFalloff(float value)
+        {
+            edgeFalloff = Mathf.Clamp(value, 0f, 0.5f);
+            dirty = true;
+        }
+
+        public void SetStampBlend(StampBlend value)
+        {
+            blend = value;
+            dirty = true;
+        }
+
+        public void SetStampInvert(bool value)
+        {
+            invert = value;
+            dirty = true;
+        }
+
+        void ApplyStampAtCurrentPosition()
+        {
+            if (!ServiceRegistry.TryResolve<TerrainWorld>(out var world))
+                return;
+
+            Texture2D tex = Current;
+
+            if (tex == null)
+                return;
+
+            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+            if (!Physics.Raycast(ray, out RaycastHit hit, 20000f))
+                return;
+
+            world.PlaceStamp(MakeStamp(hit.point, tex));
+
+            dirty = true;
         }
     }
 }

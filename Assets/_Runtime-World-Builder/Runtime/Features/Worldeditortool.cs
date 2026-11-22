@@ -4,255 +4,803 @@ using RuntimeWorldBuilder.Runtime.Testing;
 using RuntimeWorldBuilder.Runtime.World;
 using RuntimeWorldBuilder.SO.Settings;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace RuntimeWorldBuilder.Runtime.Features
 {
-    /// NEW all-in-one in-game tool: roads (with bridges), rivers, lakes, ponds, hills, valleys, flatten.
-    /// It does not modify any existing script. It reuses PathSpline, RoadBuilder, WaterBuilder, WaterRegistry,
-    /// FeatureMaterials, RoadStyle and TerrainWorld.ModifyHeights, and pauses HeightmapPlacer by itself while active.
-    /// Add this component to TerrainManager and REMOVE/untick the old FeaturePlacer component (two panels would overlap).
-    ///
-    /// Road / River: click points, Enter to build.  Lake / Pond / Hill / Valley / Flatten: one click.
-    /// Backspace = remove last point, Esc = cancel, F3 = hide/show panel, Ctrl+Z (tester) undoes terrain edits.
     public class WorldEditorTool : MonoBehaviour
     {
-        enum Mode { None, Road, River, Lake, Pond, Hill, Valley, Flatten }
-        static readonly string[] modeNames = { "Off", "Road", "River", "Lake", "Pond", "Hill", "Valley", "Flatten" };
-
-        [SerializeField] FeatureMaterials materials = new();
-        [SerializeField] RoadStyle road = new();
-        [SerializeField] float riverWidth = 12f, riverDepth = 3f;
-        [SerializeField] float lakeRadius = 45f, lakeDepth = 8f;
-        [SerializeField] float pondRadius = 12f, pondDepth = 2f;
-        [SerializeField] float shapeRadius = 80f, hillHeight = 30f, valleyDepth = 20f, flattenRadius = 40f;
-        [Tooltip("Leave empty to find it automatically. Paused while this tool is active.")]
-        [SerializeField] HeightmapPlacer stamper;
-        [SerializeField] Rect panelRect = new(10, 420, 330, 400);
-
-        Mode mode;
-        bool open = true;
-        readonly List<Vector2> pts = new();
-        LineRenderer line;
-        Transform root;
-        string status = "Pick a mode, then click the terrain.";
-        bool stamperOn = true;
-
-        void Awake()
+        private enum Mode
         {
-            var go = new GameObject("WorldEditorLine");          // child object, so it can't clash with other LineRenderers
-            go.transform.SetParent(transform, false);
-            line = go.AddComponent<LineRenderer>();
-            line.material = new Material(Shader.Find("Sprites/Default"));
-            line.startColor = line.endColor = new Color(1f, 0.9f, 0.1f);
-            line.widthMultiplier = 1.5f;
-            line.useWorldSpace = true;
-            line.positionCount = 0;
+            None,
+            Road,
+            River,
+            Lake,
+            Pond,
+            Hill,
+            Valley,
+            Flatten
         }
 
-        void Start()
+        [Header("Feature Materials")]
+        [SerializeField] private FeatureMaterials materials = new();
+        [SerializeField] private RoadStyle road = new();
+
+        [Header("River Settings")]
+        [SerializeField] private float riverWidth = 12f;
+        [SerializeField] private float riverDepth = 3f;
+
+        [Header("Lake Settings")]
+        [SerializeField] private float lakeRadius = 45f;
+        [SerializeField] private float lakeDepth = 8f;
+
+        [Header("Pond Settings")]
+        [SerializeField] private float pondRadius = 12f;
+        [SerializeField] private float pondDepth = 2f;
+
+        [Header("Terrain Shape Settings")]
+        [SerializeField] private float shapeRadius = 80f;
+        [SerializeField] private float hillHeight = 30f;
+        [SerializeField] private float valleyDepth = 20f;
+        [SerializeField] private float flattenRadius = 40f;
+
+        [Header("References")]
+        [SerializeField] private HeightmapPlacer stamper;
+        [SerializeField] private UIDocument uiDocument;
+
+        private Mode mode = Mode.None;
+
+        private readonly List<Vector2> points = new();
+
+        private LineRenderer lineRenderer;
+        private Transform featureRoot;
+
+        private VisualElement uiRoot;
+        private VisualElement toolPopover;
+        private Label activeToolLabel;
+
+        private Slider pathWidthSlider;
+        private Slider pathDepthSlider;
+        private Slider waterRadiusSlider;
+        private FloatField waterLevelField;
+
+        private string status = "Select a feature tool.";
+
+        private bool stamperOn = true;
+        private bool uiInitialized;
+
+        // --------------------------------------------------
+        // INITIALIZATION
+        // --------------------------------------------------
+
+        private void Awake()
+        {
+            CreateLineRenderer();
+        }
+
+        private void Start()
         {
             if (stamper == null)
-            {
-#if UNITY_2023_1_OR_NEWER
                 stamper = FindFirstObjectByType<HeightmapPlacer>();
-#else
-                stamper = FindObjectOfType<HeightmapPlacer>();
-#endif
+
+            if (uiDocument == null)
+                uiDocument = FindFirstObjectByType<UIDocument>();
+
+            InitializeUIToolkit();
+        }
+
+        private void OnDisable()
+        {
+            SetStamper(true);
+            ClearPreviewLine();
+        }
+
+        private void OnDestroy()
+        {
+            if (lineRenderer != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(lineRenderer.gameObject);
+                else
+                    DestroyImmediate(lineRenderer.gameObject);
             }
         }
 
-        void OnDisable() => SetStamper(true);
-
-        Transform Root
+        private void CreateLineRenderer()
         {
-            get
+            GameObject go = new GameObject("WorldEditorLine");
+            go.transform.SetParent(transform, false);
+
+            lineRenderer = go.AddComponent<LineRenderer>();
+
+            Shader shader = Shader.Find("Sprites/Default");
+
+            if (shader != null)
+                lineRenderer.material = new Material(shader);
+
+            lineRenderer.startColor = new Color(1f, 0.9f, 0.1f);
+            lineRenderer.endColor = new Color(1f, 0.9f, 0.1f);
+
+            lineRenderer.widthMultiplier = 1.5f;
+            lineRenderer.useWorldSpace = true;
+            lineRenderer.positionCount = 0;
+        }
+
+        // --------------------------------------------------
+        // UI TOOLKIT INITIALIZATION
+        // --------------------------------------------------
+
+        private void InitializeUIToolkit()
+        {
+            if (uiDocument == null)
             {
-                if (root == null) root = new GameObject("RoadsAndWater").transform;
-                return root;
-            }
-        }
-
-        // Pause/resume the heightmap stamper so our clicks don't also place stamps.
-        void SetStamper(bool on)
-        {
-            if (stamper == null || stamperOn == on) return;
-            stamperOn = on;
-            stamper.enabled = on;
-
-            foreach (var lr in stamper.GetComponents<LineRenderer>()) lr.enabled = on;   // its outline
-            var ghost = stamper.transform.Find("StampGhost");
-            var arrow = stamper.transform.Find("StampArrow");
-            if (ghost != null) ghost.gameObject.SetActive(on);
-            if (arrow != null) arrow.gameObject.SetActive(on);
-        }
-
-        void Update()
-        {
-            panelRect.x = 10f;
-            panelRect.y = Mathf.Max(10f, Screen.height - panelRect.height - 10f);
-            var mp = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
-            if (Input.GetKeyDown(KeyCode.F3)) open = !open;
-            bool overPanel = (open ? panelRect : new Rect(panelRect.x, panelRect.y, 120, 24)).Contains(mp);
-
-            SetStamper(mode == Mode.None && !overPanel);
-
-            if (mode == Mode.None) return;
-            if (!ServiceRegistry.TryResolve<TerrainWorld>(out var world)) return;
-            if (!ServiceRegistry.TryResolve<TerrainSettings>(out var s)) return;
-
-            if (Input.GetKeyDown(KeyCode.Escape)) Cancel();
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Finish(world, s);
-            if (Input.GetKeyDown(KeyCode.Backspace) && pts.Count > 0) { pts.RemoveAt(pts.Count - 1); RefreshLine(world, s); }
-
-            if (overPanel || !Input.GetMouseButtonDown(0)) return;
-            if (Camera.main == null) return;
-            if (!Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out var hit, 20000f)) return;
-
-            var p = new Vector2(hit.point.x, hit.point.z);
-            switch (mode)
-            {
-                case Mode.Road:
-                case Mode.River:
-                    pts.Add(p);
-                    RefreshLine(world, s);
-                    status = $"{mode}: {pts.Count} points. Enter to build.";
-                    break;
-                case Mode.Lake:
-                    status = WaterBuilder.CreateLake(world, s, p, lakeRadius, lakeDepth, materials, Root) != null
-                        ? "Lake created." : "Lake failed (see Console).";
-                    break;
-                case Mode.Pond:
-                    status = WaterBuilder.CreateLake(world, s, p, pondRadius, pondDepth, materials, Root) != null
-                        ? "Pond created." : "Pond failed (see Console).";
-                    break;
-                case Mode.Hill:
-                    TerrainShaper.Hill(world, s, p, shapeRadius, hillHeight, true);
-                    status = "Hill raised.";
-                    break;
-                case Mode.Valley:
-                    TerrainShaper.Hill(world, s, p, shapeRadius, valleyDepth, false);
-                    status = "Valley dug.";
-                    break;
-                case Mode.Flatten:
-                    status = TerrainShaper.Flatten(world, s, p, flattenRadius) ? "Flattened." : "Flatten failed (off terrain).";
-                    break;
-            }
-        }
-
-        void Finish(TerrainWorld world, TerrainSettings s)
-        {
-            if (mode != Mode.Road && mode != Mode.River) return;
-            if (pts.Count < 2) { status = "Need at least 2 points."; return; }
-
-            if (mode == Mode.Road)
-                status = RoadBuilder.Build(world, s, pts, road, materials, Root) ? "Road built." : "Road failed.";
-            else
-                status = WaterBuilder.CreateRiver(world, s, pts, riverWidth, riverDepth, materials, Root) != null
-                    ? "River built." : "River failed.";
-
-            pts.Clear();
-            line.positionCount = 0;
-        }
-
-        void Cancel()
-        {
-            pts.Clear();
-            line.positionCount = 0;
-            status = "Cancelled.";
-        }
-
-        void RefreshLine(TerrainWorld world, TerrainSettings s)
-        {
-            var show = pts.Count >= 2 ? PathSpline.Sample(pts, 4f) : pts;
-            line.positionCount = show.Count;
-            for (int i = 0; i < show.Count; i++)
-            {
-                float yy = world.TrySampleHeight01(show[i].x, show[i].y, out float h01) ? h01 * s.maxHeight : 0f;
-                line.SetPosition(i, new Vector3(show[i].x, yy + 1.5f, show[i].y));
-            }
-        }
-
-        // ---------- UI ----------
-        float Slider(string label, float v, float min, float max)
-        {
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(label, GUILayout.Width(90));
-            v = GUILayout.HorizontalSlider(v, min, max);
-            GUILayout.Label(v.ToString("F1"), GUILayout.Width(44));
-            GUILayout.EndHorizontal();
-            return v;
-        }
-
-        void OnGUI()
-        {
-            if (!open)
-            {
-                if (GUI.Button(new Rect(panelRect.x, panelRect.y, 120, 24), "World Editor")) open = true;
+                Debug.LogError(
+                    "WorldEditorTool: UIDocument not assigned."
+                );
                 return;
             }
 
-            GUILayout.BeginArea(panelRect, GUI.skin.box);
-            GUILayout.Label("World Editor: roads, water, terrain");
-            if (GUILayout.Button("Hide panel (F3)")) open = false;
+            uiRoot = uiDocument.rootVisualElement;
 
-            int m = GUILayout.SelectionGrid((int)mode, modeNames, 4);
-            if ((Mode)m != mode) { mode = (Mode)m; Cancel(); status = $"Mode: {mode}"; }
+            if (uiRoot == null)
+                return;
 
+            toolPopover = uiRoot.Q<VisualElement>("tool-popover");
+            activeToolLabel = uiRoot.Q<Label>("lbl-active-tool");
+
+            pathWidthSlider = uiRoot.Q<Slider>("sld-path-width");
+            pathDepthSlider = uiRoot.Q<Slider>("sld-path-depth");
+            waterRadiusSlider = uiRoot.Q<Slider>("sld-water-radius");
+            waterLevelField = uiRoot.Q<FloatField>("fld-water-level");
+
+            BindFeatureButtons();
+            BindFeatureSettings();
+
+            uiInitialized = true;
+
+            UpdateStatus("Select a feature tool.");
+        }
+
+        // --------------------------------------------------
+        // BUTTON BINDINGS
+        // --------------------------------------------------
+
+        private void BindFeatureButtons()
+        {
+            BindButton("btn-builder-road", () => SetMode(Mode.Road));
+            BindButton("btn-builder-river", () => SetMode(Mode.River));
+            BindButton("btn-builder-lake", () => SetMode(Mode.Lake));
+            BindButton("btn-builder-pond", () => SetMode(Mode.Pond));
+
+            BindButton("btn-tool-hill", () => SetMode(Mode.Hill));
+            BindButton("btn-tool-valley", () => SetMode(Mode.Valley));
+            BindButton("btn-tool-flatten", () => SetMode(Mode.Flatten));
+
+            BindButton("btn-spline-finish", FinishCurrentFeature);
+            BindButton("btn-spline-cancel", Cancel);
+
+            BindButton("btn-spline-undo-pt", RemoveLastPoint);
+
+            BindButton("btn-close-popover", () =>
+            {
+                SetMode(Mode.None);
+            });
+
+            // Optional button: add this to UXML if you want
+            // a dedicated clear button.
+            BindButton("btn-clear-features", ClearFeatures);
+        }
+
+        private void BindButton(string elementName, System.Action callback)
+        {
+            Button button = uiRoot.Q<Button>(elementName);
+
+            if (button == null)
+                return;
+
+            button.clicked += callback;
+        }
+
+        // --------------------------------------------------
+        // SETTINGS BINDINGS
+        // --------------------------------------------------
+
+        private void BindFeatureSettings()
+        {
+            if (pathWidthSlider != null)
+            {
+                pathWidthSlider.RegisterValueChangedCallback(evt =>
+                {
+                    switch (mode)
+                    {
+                        case Mode.Road:
+                            road.width = evt.newValue;
+                            break;
+
+                        case Mode.River:
+                            riverWidth = evt.newValue;
+                            break;
+                    }
+                });
+            }
+
+            if (pathDepthSlider != null)
+            {
+                pathDepthSlider.RegisterValueChangedCallback(evt =>
+                {
+                    switch (mode)
+                    {
+                        case Mode.Road:
+                            road.shoulder = evt.newValue;
+                            break;
+
+                        case Mode.River:
+                            riverDepth = evt.newValue;
+                            break;
+                    }
+                });
+            }
+
+            if (waterRadiusSlider != null)
+            {
+                waterRadiusSlider.RegisterValueChangedCallback(evt =>
+                {
+                    switch (mode)
+                    {
+                        case Mode.Lake:
+                            lakeRadius = evt.newValue;
+                            break;
+
+                        case Mode.Pond:
+                            pondRadius = evt.newValue;
+                            break;
+                    }
+                });
+            }
+
+            if (waterLevelField != null)
+            {
+                waterLevelField.RegisterValueChangedCallback(evt =>
+                {
+                    lakeDepth = Mathf.Max(0f, evt.newValue);
+                    pondDepth = Mathf.Max(0f, evt.newValue);
+                });
+            }
+        }
+
+        // --------------------------------------------------
+        // MODE MANAGEMENT
+        // --------------------------------------------------
+
+        private void SetMode(Mode newMode)
+        {
+            mode = newMode;
+
+            Cancel();
+
+            UpdateModeUI();
+
+            UpdateStatus(
+                newMode == Mode.None
+                    ? "Feature tool disabled."
+                    : $"Selected: {newMode}. Click on terrain."
+            );
+        }
+
+        private void UpdateModeUI()
+        {
+            if (activeToolLabel != null)
+                activeToolLabel.text = mode.ToString();
+
+            UpdateButtonState("btn-builder-road", mode == Mode.Road);
+            UpdateButtonState("btn-builder-river", mode == Mode.River);
+            UpdateButtonState("btn-builder-lake", mode == Mode.Lake);
+            UpdateButtonState("btn-builder-pond", mode == Mode.Pond);
+
+            UpdateButtonState("btn-tool-hill", mode == Mode.Hill);
+            UpdateButtonState("btn-tool-valley", mode == Mode.Valley);
+            UpdateButtonState("btn-tool-flatten", mode == Mode.Flatten);
+
+            UpdateModeSettings();
+        }
+
+        private void UpdateButtonState(string elementName, bool active)
+        {
+            Button button = uiRoot?.Q<Button>(elementName);
+
+            if (button == null)
+                return;
+
+            button.EnableInClassList("tool-chip--active", active);
+        }
+
+        private void UpdateModeSettings()
+        {
+            if (pathWidthSlider != null)
+            {
+                switch (mode)
+                {
+                    case Mode.Road:
+                        pathWidthSlider.lowValue = 3f;
+                        pathWidthSlider.highValue = 20f;
+                        pathWidthSlider.value = road.width;
+                        break;
+
+                    case Mode.River:
+                        pathWidthSlider.lowValue = 4f;
+                        pathWidthSlider.highValue = 60f;
+                        pathWidthSlider.value = riverWidth;
+                        break;
+                }
+            }
+
+            if (pathDepthSlider != null)
+            {
+                switch (mode)
+                {
+                    case Mode.Road:
+                        pathDepthSlider.lowValue = 1f;
+                        pathDepthSlider.highValue = 20f;
+                        pathDepthSlider.value = road.shoulder;
+                        break;
+
+                    case Mode.River:
+                        pathDepthSlider.lowValue = 1f;
+                        pathDepthSlider.highValue = 10f;
+                        pathDepthSlider.value = riverDepth;
+                        break;
+                }
+            }
+
+            if (waterRadiusSlider != null)
+            {
+                if (mode == Mode.Lake)
+                {
+                    waterRadiusSlider.lowValue = 20f;
+                    waterRadiusSlider.highValue = 150f;
+                    waterRadiusSlider.value = lakeRadius;
+                }
+                else if (mode == Mode.Pond)
+                {
+                    waterRadiusSlider.lowValue = 5f;
+                    waterRadiusSlider.highValue = 30f;
+                    waterRadiusSlider.value = pondRadius;
+                }
+            }
+
+            if (waterLevelField != null)
+            {
+                waterLevelField.value =
+                    mode == Mode.Pond ? pondDepth : lakeDepth;
+            }
+        }
+
+        // --------------------------------------------------
+        // FEATURE ROOT
+        // --------------------------------------------------
+
+        private Transform Root
+        {
+            get
+            {
+                if (featureRoot == null)
+                {
+                    GameObject go = new GameObject("RoadsAndWater");
+                    featureRoot = go.transform;
+                }
+
+                return featureRoot;
+            }
+        }
+
+        // --------------------------------------------------
+        // STAMPER CONTROL
+        // --------------------------------------------------
+
+        private void SetStamper(bool enabledState)
+        {
+            if (stamper == null || stamperOn == enabledState)
+                return;
+
+            stamperOn = enabledState;
+            stamper.enabled = enabledState;
+
+            foreach (LineRenderer lr in stamper.GetComponents<LineRenderer>())
+                lr.enabled = enabledState;
+
+            Transform ghost = stamper.transform.Find("StampGhost");
+            Transform arrow = stamper.transform.Find("StampArrow");
+
+            if (ghost != null)
+                ghost.gameObject.SetActive(enabledState);
+
+            if (arrow != null)
+                arrow.gameObject.SetActive(enabledState);
+        }
+
+        // --------------------------------------------------
+        // UI POINTER DETECTION
+        // --------------------------------------------------
+
+        private bool IsPointerOverUI()
+        {
+            if (uiDocument == null || uiRoot == null)
+                return false;
+
+            IPanel panel = uiRoot.panel;
+
+            if (panel == null)
+                return false;
+
+            Vector2 panelPosition =
+                RuntimePanelUtils.ScreenToPanel(
+                    panel,
+                    Input.mousePosition
+                );
+
+            VisualElement picked = panel.Pick(panelPosition);
+
+            return picked != null &&
+                   picked.pickingMode != PickingMode.Ignore;
+        }
+
+        // --------------------------------------------------
+        // UPDATE
+        // --------------------------------------------------
+
+        private void Update()
+        {
+            bool overUI = IsPointerOverUI();
+
+            // Keep the stamper disabled while the feature editor
+            // is active or the pointer is interacting with UI.
+            SetStamper(mode == Mode.None && !overUI);
+
+            if (Input.GetKeyDown(KeyCode.F3))
+                TogglePopover();
+
+            if (mode == Mode.None)
+                return;
+
+            if (!ServiceRegistry.TryResolve<TerrainWorld>(out var world))
+                return;
+
+            if (!ServiceRegistry.TryResolve<TerrainSettings>(out var settings))
+                return;
+
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                Cancel();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Return) ||
+                Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                Finish(world, settings);
+            }
+
+            if (Input.GetKeyDown(KeyCode.Backspace))
+                RemoveLastPoint(world, settings);
+
+            if (overUI || !Input.GetMouseButtonDown(0))
+                return;
+
+            if (Camera.main == null)
+                return;
+
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+            if (!Physics.Raycast(ray, out RaycastHit hit, 20000f))
+                return;
+
+            Vector2 position = new Vector2(hit.point.x, hit.point.z);
+
+            HandleTerrainClick(world, settings, position);
+        }
+
+        // --------------------------------------------------
+        // TERRAIN CLICK HANDLING
+        // --------------------------------------------------
+
+        private void HandleTerrainClick(
+            TerrainWorld world,
+            TerrainSettings settings,
+            Vector2 position)
+        {
             switch (mode)
             {
                 case Mode.Road:
-                    road.width = Slider("Width", road.width, 3f, 20f);
-                    road.shoulder = Slider("Shoulder", road.shoulder, 1f, 20f);
-                    road.maxGrade = Slider("Max grade", road.maxGrade, 0.02f, 0.4f);
-                    road.bridgeClearance = Slider("Bridge height", road.bridgeClearance, 1f, 10f);
-                    break;
                 case Mode.River:
-                    riverWidth = Slider("Width", riverWidth, 4f, 60f);
-                    riverDepth = Slider("Depth", riverDepth, 1f, 10f);
-                    GUILayout.Label("Click from upstream (high) to downstream (low).");
+
+                    points.Add(position);
+
+                    RefreshLine(world, settings);
+
+                    UpdateStatus(
+                        $"{mode}: {points.Count} points. Press Enter to build."
+                    );
+
                     break;
+
                 case Mode.Lake:
-                    lakeRadius = Slider("Radius", lakeRadius, 20f, 150f);
-                    lakeDepth = Slider("Depth", lakeDepth, 2f, 20f);
+
+                    UpdateStatus(
+                        WaterBuilder.CreateLake(
+                            world,
+                            settings,
+                            position,
+                            lakeRadius,
+                            lakeDepth,
+                            materials,
+                            Root
+                        ) != null
+                            ? "Lake created."
+                            : "Lake creation failed. Check Console."
+                    );
+
                     break;
+
                 case Mode.Pond:
-                    pondRadius = Slider("Radius", pondRadius, 5f, 30f);
-                    pondDepth = Slider("Depth", pondDepth, 0.5f, 5f);
+
+                    UpdateStatus(
+                        WaterBuilder.CreateLake(
+                            world,
+                            settings,
+                            position,
+                            pondRadius,
+                            pondDepth,
+                            materials,
+                            Root
+                        ) != null
+                            ? "Pond created."
+                            : "Pond creation failed. Check Console."
+                    );
+
                     break;
+
                 case Mode.Hill:
-                    shapeRadius = Slider("Radius", shapeRadius, 20f, 300f);
-                    hillHeight = Slider("Height (m)", hillHeight, 5f, 120f);
+
+                    TerrainShaper.Hill(
+                        world,
+                        settings,
+                        position,
+                        shapeRadius,
+                        hillHeight,
+                        true
+                    );
+
+                    UpdateStatus("Hill raised.");
                     break;
+
                 case Mode.Valley:
-                    shapeRadius = Slider("Radius", shapeRadius, 20f, 300f);
-                    valleyDepth = Slider("Depth (m)", valleyDepth, 5f, 80f);
+
+                    TerrainShaper.Hill(
+                        world,
+                        settings,
+                        position,
+                        shapeRadius,
+                        valleyDepth,
+                        false
+                    );
+
+                    UpdateStatus("Valley created.");
                     break;
+
                 case Mode.Flatten:
-                    flattenRadius = Slider("Radius", flattenRadius, 10f, 200f);
-                    GUILayout.Label("Levels the ground to the height where you click.");
+
+                    UpdateStatus(
+                        TerrainShaper.Flatten(
+                            world,
+                            settings,
+                            position,
+                            flattenRadius
+                        )
+                            ? "Terrain flattened."
+                            : "Flatten failed. Position is outside terrain."
+                    );
+
                     break;
             }
+        }
 
-            if (mode == Mode.Road || mode == Mode.River)
+        // --------------------------------------------------
+        // FINISH ROAD / RIVER
+        // --------------------------------------------------
+
+        private void FinishCurrentFeature()
+        {
+            if (!ServiceRegistry.TryResolve<TerrainWorld>(out var world))
+                return;
+
+            if (!ServiceRegistry.TryResolve<TerrainSettings>(out var settings))
+                return;
+
+            Finish(world, settings);
+        }
+
+        private void Finish(
+            TerrainWorld world,
+            TerrainSettings settings)
+        {
+            if (mode != Mode.Road && mode != Mode.River)
+                return;
+
+            if (points.Count < 2)
             {
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Finish (Enter)") &&
-                    ServiceRegistry.TryResolve<TerrainWorld>(out var w) && ServiceRegistry.TryResolve<TerrainSettings>(out var st))
-                    Finish(w, st);
-                if (GUILayout.Button("Cancel (Esc)")) Cancel();
-                GUILayout.EndHorizontal();
+                UpdateStatus("You need at least 2 points.");
+                return;
             }
 
-            if (GUILayout.Button("Clear roads/water objects"))
+            if (mode == Mode.Road)
             {
-                if (root != null) Destroy(root.gameObject);
-                root = null;
-                WaterRegistry.Clear();
-                status = "Objects cleared (terrain carving stays; use Ctrl+Z to undo it).";
+                bool success = RoadBuilder.Build(
+                    world,
+                    settings,
+                    points,
+                    road,
+                    materials,
+                    Root
+                );
+
+                UpdateStatus(success ? "Road built." : "Road creation failed.");
+            }
+            else
+            {
+                bool success = WaterBuilder.CreateRiver(
+                    world,
+                    settings,
+                    points,
+                    riverWidth,
+                    riverDepth,
+                    materials,
+                    Root
+                ) != null;
+
+                UpdateStatus(success ? "River built." : "River creation failed.");
             }
 
-            GUILayout.Label(status);
-            GUILayout.EndArea();
+            points.Clear();
+            ClearPreviewLine();
+        }
+
+        // --------------------------------------------------
+        // REMOVE LAST POINT
+        // --------------------------------------------------
+
+        private void RemoveLastPoint()
+        {
+            if (!ServiceRegistry.TryResolve<TerrainWorld>(out var world))
+                return;
+
+            if (!ServiceRegistry.TryResolve<TerrainSettings>(out var settings))
+                return;
+
+            RemoveLastPoint(world, settings);
+        }
+
+        private void RemoveLastPoint(
+            TerrainWorld world,
+            TerrainSettings settings)
+        {
+            if (points.Count == 0)
+                return;
+
+            points.RemoveAt(points.Count - 1);
+
+            RefreshLine(world, settings);
+
+            UpdateStatus($"{points.Count} points remaining.");
+        }
+
+        // --------------------------------------------------
+        // CANCEL
+        // --------------------------------------------------
+
+        private void Cancel()
+        {
+            points.Clear();
+            ClearPreviewLine();
+
+            UpdateStatus("Operation cancelled.");
+        }
+
+        // --------------------------------------------------
+        // PREVIEW LINE
+        // --------------------------------------------------
+
+        private void RefreshLine(
+            TerrainWorld world,
+            TerrainSettings settings)
+        {
+            if (lineRenderer == null)
+                return;
+
+            List<Vector2> sampled =
+                points.Count >= 2
+                    ? PathSpline.Sample(points, 4f)
+                    : points;
+
+            lineRenderer.positionCount = sampled.Count;
+
+            for (int i = 0; i < sampled.Count; i++)
+            {
+                float y = world.TrySampleHeight01(
+                    sampled[i].x,
+                    sampled[i].y,
+                    out float height01
+                )
+                    ? height01 * settings.maxHeight
+                    : 0f;
+
+                lineRenderer.SetPosition(
+                    i,
+                    new Vector3(
+                        sampled[i].x,
+                        y + 1.5f,
+                        sampled[i].y
+                    )
+                );
+            }
+        }
+
+        private void ClearPreviewLine()
+        {
+            if (lineRenderer != null)
+                lineRenderer.positionCount = 0;
+        }
+
+        // --------------------------------------------------
+        // CLEAR FEATURES
+        // --------------------------------------------------
+
+        public void ClearFeatures()
+        {
+            if (featureRoot != null)
+            {
+                Destroy(featureRoot.gameObject);
+                featureRoot = null;
+            }
+
+            WaterRegistry.Clear();
+
+            points.Clear();
+            ClearPreviewLine();
+
+            UpdateStatus(
+                "Road and water objects cleared. Terrain carving remains."
+            );
+        }
+
+        // --------------------------------------------------
+        // UI VISIBILITY
+        // --------------------------------------------------
+
+        private void TogglePopover()
+        {
+            if (toolPopover == null)
+                return;
+
+            toolPopover.ToggleInClassList("hidden");
+        }
+
+        // --------------------------------------------------
+        // STATUS
+        // --------------------------------------------------
+
+        private void UpdateStatus(string message)
+        {
+            status = message;
+
+            Debug.Log("[WorldEditorTool] " + message);
+
+            if (activeToolLabel != null)
+            {
+                activeToolLabel.text =
+                    mode == Mode.None
+                        ? "World Editor"
+                        : mode.ToString();
+            }
         }
     }
 }
