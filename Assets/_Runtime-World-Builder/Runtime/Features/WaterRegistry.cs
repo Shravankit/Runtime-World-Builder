@@ -39,7 +39,9 @@ namespace RuntimeWorldBuilder.Runtime.Features
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() => Clear();
 
-        public static void Add(LakeData l) => lakes.Add(l);
+        public static void Add(LakeData l) { if (!lakes.Contains(l)) lakes.Add(l); }
+        public static void Remove(LakeData l) => lakes.Remove(l);
+
         public static void Add(RiverData r)
         {
             r.Min = new Vector2(float.MaxValue, float.MaxValue);
@@ -49,8 +51,9 @@ namespace RuntimeWorldBuilder.Runtime.Features
                 r.Min = Vector2.Min(r.Min, new Vector2(p.x, p.z));
                 r.Max = Vector2.Max(r.Max, new Vector2(p.x, p.z));
             }
-            rivers.Add(r);
+            if (!rivers.Contains(r)) rivers.Add(r);
         }
+        public static void Remove(RiverData r) => rivers.Remove(r);
         public static void Clear() { lakes.Clear(); rivers.Clear(); }
 
         public static bool TryGet(float x, float z, float margin, out float level)
@@ -89,11 +92,28 @@ namespace RuntimeWorldBuilder.Runtime.Features
     [Serializable]
     public class FeatureMaterials
     {
-        public Material road, bridge, water;
+        public Material road, bridge, water, lake;
 
         public Material Road => road != null ? road : road = Make(new Color(0.18f, 0.18f, 0.2f), false);
         public Material Bridge => bridge != null ? bridge : bridge = Make(new Color(0.55f, 0.55f, 0.52f), false);
-        public Material Water => water != null ? water : water = Make(new Color(0.1f, 0.35f, 0.5f, 0.65f), true);
+        public Material Water => water != null ? water : water = MakeWater(false);
+        public Material Lake => lake != null ? lake : lake = MakeWater(true);
+
+        static Material MakeWater(bool still)
+        {
+            var sh = Shader.Find("RuntimeWorldBuilder/Water");
+            if (sh == null) return Make(new Color(0.1f, 0.35f, 0.5f, 0.65f), true);   // shader not included: plain fallback
+            var m = new Material(sh);
+            m.SetFloat("_Mode", still ? 1f : 0f);
+            if (still)
+            {
+                m.SetFloat("_FlowSpeed", 0.08f);
+                m.SetFloat("_RippleScale", 0.12f);
+                m.SetFloat("_RippleStrength", 0.8f);
+                m.SetFloat("_DepthDistance", 4f);
+            }
+            return m;
+        }
 
         static Material Make(Color c, bool transparent)
         {

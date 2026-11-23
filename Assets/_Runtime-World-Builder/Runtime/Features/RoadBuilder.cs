@@ -21,6 +21,28 @@ namespace RuntimeWorldBuilder.Runtime.Features
         const float Spacing = 2f;
 
         public static bool Build(TerrainWorld world, TerrainSettings s, List<Vector2> control, RoadStyle st,
+    FeatureMaterials mats, Transform parent)
+        {
+            var feature = new GameObject("Road");
+            feature.transform.SetParent(parent, false);
+
+            bool ok = false;
+            world.BeginEdit("Road");
+            try { ok = BuildInternal(world, s, control, st, mats, feature.transform); }
+            finally
+            {
+                if (ok)
+                    world.AddEditHook(
+                        () => { if (feature != null) feature.SetActive(false); },
+                        () => { if (feature != null) feature.SetActive(true); },
+                        () => { if (feature != null) UnityEngine.Object.Destroy(feature); });
+                world.EndEdit();
+            }
+            if (!ok) UnityEngine.Object.Destroy(feature);
+            return ok;
+        }
+
+        public static bool BuildInternal(TerrainWorld world, TerrainSettings s, List<Vector2> control, RoadStyle st,
             FeatureMaterials mats, Transform parent)
         {
             var pts = PathSpline.Sample(control, Spacing);

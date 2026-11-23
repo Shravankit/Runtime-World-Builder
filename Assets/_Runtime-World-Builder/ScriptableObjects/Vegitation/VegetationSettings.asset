@@ -43,7 +43,7 @@ MonoBehaviour:
     weightPower: 0
     widthScale: {x: 0.8, y: 1.2}
     heightScale: {x: 0.8, y: 1.3}
-    healthyColor: {r: 0, g: 0, b: 0, a: 0}
+    healthyColor: {r: 1, g: 1, b: 1, a: 0}
     dryColor: {r: 0, g: 0, b: 0, a: 0}
     noiseSpread: 0.098
   maxTreesPerChunk: 800

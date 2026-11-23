@@ -4,338 +4,627 @@
     <!-- Transparent root so 3D viewport clicks pass through -->
     <ui:VisualElement name="rwb-root" class="rwb-root" picking-mode="Ignore">
 
-        <!-- TOP BAR -->
-        <ui:VisualElement name="top-bar" class="top-bar" picking-mode="Ignore">
-            <ui:VisualElement class="pill-panel">
-                <ui:VisualElement class="btn-icon icon-sculpt" />
-                <ui:Label text="Runtime World Builder" class="brand-title" />
-                <ui:Label name="lbl-active-tool" text="Sculpt" class="active-badge" />
+        <!-- ================= HEADER ================= -->
+        <ui:VisualElement name="top-bar" class="top-bar">
+            <ui:VisualElement class="top-left">
+                <ui:VisualElement class="brand-logo"><ui:VisualElement class="btn-icon icon-sculpt" /></ui:VisualElement>
+                <ui:VisualElement class="brand-text">
+                    <ui:Label text="TERRAFORM" class="brand-title" />
+                    <ui:Label text="RUNTIME BUILDER" class="brand-subtitle" />
+                </ui:VisualElement>
+                <ui:VisualElement class="top-divider" />
+                <ui:Label name="lbl-project-name" text="Highland Valley" class="project-name" />
+                <ui:VisualElement name="save-dot" class="save-dot" />
+                <ui:Label name="lbl-save-state" text="All changes saved" class="save-state" />
             </ui:VisualElement>
 
-            <ui:VisualElement class="pill-panel">
-                <ui:Button name="btn-undo" class="top-btn">
-                    <ui:VisualElement class="btn-icon icon-undo" />
-                    <ui:Label text="Undo" class="btn-lbl" />
-                </ui:Button>
-                <ui:Button name="btn-redo" class="top-btn">
-                    <ui:VisualElement class="btn-icon icon-redo" />
-                    <ui:Label text="Redo" class="btn-lbl" />
-                </ui:Button>
+            <ui:VisualElement class="top-right">
                 <ui:Button name="btn-quick-save" class="top-btn">
-                    <ui:VisualElement class="btn-icon icon-save" />
-                    <ui:Label text="Save" class="btn-lbl" />
+                    <ui:VisualElement class="btn-icon icon-save" /><ui:Label text="Save" class="btn-lbl" />
                 </ui:Button>
                 <ui:Button name="btn-quick-load" class="top-btn">
-                    <ui:VisualElement class="btn-icon icon-load" />
-                    <ui:Label text="Load" class="btn-lbl" />
+                    <ui:VisualElement class="btn-icon icon-load" /><ui:Label text="Load" class="btn-lbl" />
                 </ui:Button>
+                <ui:Button name="btn-undo" class="top-btn">
+                    <ui:VisualElement class="btn-icon icon-undo" /><ui:Label text="Undo" class="btn-lbl" />
+                </ui:Button>
+                <ui:Button name="btn-redo" class="top-btn">
+                    <ui:VisualElement class="btn-icon icon-redo" /><ui:Label text="Redo" class="btn-lbl" />
+                </ui:Button>
+                <ui:Button name="btn-reset" text="Reset" class="top-btn" />
                 <ui:Button name="btn-play-mode" class="top-btn top-btn--accent">
-                    <ui:VisualElement class="btn-icon icon-play" />
-                    <ui:Label text="Play" class="btn-lbl" />
+                    <ui:VisualElement class="btn-icon icon-play" /><ui:Label text="Play" class="btn-lbl" />
                 </ui:Button>
-            </ui:VisualElement>
-
-            <ui:VisualElement class="pill-panel">
-                <ui:Button name="btn-hide-ui" text="✕ Hide UI" class="top-btn" />
+                <ui:Button name="btn-hide-ui" text="Hide UI" class="top-btn" />
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- MIDDLE WORKSPACE -->
-        <ui:VisualElement name="workspace-area" class="workspace-area" picking-mode="Ignore">
+        <!-- ================= SIDEBAR: RAIL + TOOL PANEL + VIEWPORT PILL ================= -->
+        <ui:VisualElement name="sidebar" class="sidebar" picking-mode="Ignore">
 
-            <!-- LEFT RAIL + CONTEXTUAL POPOVER -->
-            <ui:VisualElement name="left-cluster" class="left-cluster" picking-mode="Ignore">
-                <ui:VisualElement name="tool-rail" class="tool-rail">
-                    <ui:Button name="rail-sculpt" class="rail-btn rail-btn--active">
-                        <ui:VisualElement class="rail-icon icon-sculpt" />
-                        <ui:Label text="Sculpt" class="rail-lbl" />
-                    </ui:Button>
-                    <ui:Button name="rail-stamps" class="rail-btn">
-                        <ui:VisualElement class="rail-icon icon-stamps" />
-                        <ui:Label text="Stamps" class="rail-lbl" />
-                    </ui:Button>
-                    <ui:Button name="rail-roads" class="rail-btn">
-                        <ui:VisualElement class="rail-icon icon-roads" />
-                        <ui:Label text="Roads" class="rail-lbl" />
-                    </ui:Button>
-                    <ui:Button name="rail-paint" class="rail-btn">
-                        <ui:VisualElement class="rail-icon icon-paint" />
-                        <ui:Label text="Paint" class="rail-lbl" />
-                    </ui:Button>
-                    <ui:Button name="rail-nature" class="rail-btn">
-                        <ui:VisualElement class="rail-icon icon-nature" />
-                        <ui:Label text="Nature" class="rail-lbl" />
-                    </ui:Button>
-                    <ui:Button name="rail-library" class="rail-btn">
-                        <ui:VisualElement class="rail-icon icon-library" />
-                        <ui:Label text="Library" class="rail-lbl" />
-                    </ui:Button>
-                    <ui:Button name="rail-settings" class="rail-btn">
-                        <ui:VisualElement class="rail-icon icon-settings" />
-                        <ui:Label text="Settings" class="rail-lbl" />
-                    </ui:Button>
+            <ui:VisualElement name="tool-rail" class="tool-rail">
+                <ui:VisualElement class="rail-head">
+                    <ui:Label text="TOOLS" class="rail-heading" />
+                    <ui:Button name="btn-collapse-rail" text="«" class="rail-collapse" />
+                </ui:VisualElement>
+                <ui:Button name="rail-settings" class="rail-btn rail-btn--active">
+                    <ui:VisualElement class="rail-icon icon-settings" /><ui:Label text="Generate" class="rail-lbl" /><ui:Label text="1" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-sculpt" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-sculpt" /><ui:Label text="Sculpt" class="rail-lbl" /><ui:Label text="2" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-heightmap" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-library" /><ui:Label text="Heightmap" class="rail-lbl" /><ui:Label text="3" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-stamps" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-stamps" /><ui:Label text="Stamp" class="rail-lbl" /><ui:Label text="4" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-roads" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-roads" /><ui:Label text="Roads" class="rail-lbl" /><ui:Label text="5" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-water" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-river" /><ui:Label text="Water" class="rail-lbl" /><ui:Label text="6" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-paint" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-paint" /><ui:Label text="Paint" class="rail-lbl" /><ui:Label text="7" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-materials" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-paint" /><ui:Label text="Materials" class="rail-lbl" /><ui:Label text="8" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-nature" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-nature" /><ui:Label text="Vegetation" class="rail-lbl" /><ui:Label text="9" class="rail-key" />
+                </ui:Button>
+                <ui:Button name="rail-objects" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-building" /><ui:Label text="Objects" class="rail-lbl" />
+                </ui:Button>
+                <ui:Button name="rail-chunks" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-layers" /><ui:Label text="Chunks" class="rail-lbl" />
+                </ui:Button>
+                <ui:Button name="rail-world" class="rail-btn">
+                    <ui:VisualElement class="rail-icon icon-settings" /><ui:Label text="World Mgmt" class="rail-lbl" />
+                </ui:Button>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="tool-popover" class="tool-popover">
+                <ui:VisualElement class="popover-header">
+                    <ui:VisualElement class="popover-heading">
+                        <ui:Label name="lbl-popover-title" text="Generate" class="popover-title" />
+                        <ui:Label name="lbl-popover-subtitle" text="Shape the foundation of your world" class="popover-subtitle" />
+                    </ui:VisualElement>
+                    <ui:Button name="btn-close-popover" text="✕" class="icon-btn" />
                 </ui:VisualElement>
 
-                <!-- SINGLE CONTEXTUAL POPOVER -->
-                <ui:VisualElement name="tool-popover" class="tool-popover">
-                    <ui:VisualElement class="popover-header">
-                        <ui:Label name="lbl-popover-title" text="Brush" class="popover-title" />
-                        <ui:Button name="btn-close-popover" text="✕" class="icon-btn" />
-                    </ui:VisualElement>
-
-                    <ui:ScrollView class="popover-scroll" vertical-scroller-visibility="Auto">
-
-                        <!-- SCULPT POPOVER -->
-                        <ui:VisualElement name="pop-sculpt" class="popover-body">
-                            <ui:VisualElement class="chip-grid-3">
-                                <ui:Button name="btn-tool-hill" class="tool-chip tool-chip--active">
-                                    <ui:VisualElement class="btn-icon icon-raise" />
-                                    <ui:Label text="Raise" class="btn-lbl" />
-                                </ui:Button>
-                                <ui:Button name="btn-tool-valley" class="tool-chip">
-                                    <ui:VisualElement class="btn-icon icon-lower" />
-                                    <ui:Label text="Lower" class="btn-lbl" />
-                                </ui:Button>
-                                <ui:Button name="btn-tool-smooth" class="tool-chip">
-                                    <ui:VisualElement class="btn-icon icon-smooth" />
-                                    <ui:Label text="Smooth" class="btn-lbl" />
-                                </ui:Button>
-                                <ui:Button name="btn-tool-flatten" class="tool-chip">
-                                    <ui:VisualElement class="btn-icon icon-flatten" />
-                                    <ui:Label text="Flatten" class="btn-lbl" />
-                                </ui:Button>
+                <!-- 1. GENERATE -->
+                <ui:VisualElement name="pop-generate" class="page">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="TERRAIN" class="section-title" />
+                            <ui:IntegerField name="fld-terrain-size" label="Chunk size (m)" value="256" class="field" />
+                            <ui:FloatField name="fld-max-height" label="Max height (m)" value="120" class="field" />
+                            <ui:DropdownField name="dd-heightmap-res" label="Resolution" choices="129,257,513,1025,2049" index="2" class="field" />
+                            <ui:VisualElement class="stat-row">
+                                <ui:VisualElement class="stat"><ui:Label text="RESOLUTION" class="stat-key" /><ui:Label name="lbl-stat-resolution" text="513 × 513" class="stat-val" /></ui:VisualElement>
+                                <ui:VisualElement class="stat"><ui:Label text="CHUNKS" class="stat-key" /><ui:Label name="lbl-stat-chunks" text="1" class="stat-val" /></ui:VisualElement>
                             </ui:VisualElement>
-                            <ui:Slider name="sld-brush-radius" label="Size" low-value="1" high-value="100" value="30" show-input-field="true" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="NOISE GENERATOR" class="section-title" />
+                            <ui:DropdownField name="dd-noise-type" label="Noise type" choices="Perlin noise,Simplex noise,Ridged,Billow" index="0" class="field" />
+                            <ui:Slider name="sld-noise-scale" label="Noise scale" low-value="10" high-value="2000" value="420" show-input-field="true" class="field" />
+                            <ui:SliderInt name="sld-noise-octaves" label="Octaves" low-value="1" high-value="10" value="6" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-noise-persistence" label="Persistence" low-value="0.05" high-value="1" value="0.5" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-noise-lacunarity" label="Lacunarity" low-value="1" high-value="4" value="2" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-height-mult" label="Height multiplier" low-value="0.1" high-value="3" value="1" show-input-field="true" class="field" />
+                            <ui:VisualElement class="row">
+                                <ui:IntegerField name="fld-seed" label="World seed" value="12345" class="field" />
+                                <ui:Button name="btn-seed-random" text="↻" class="icon-btn" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="PRESET" class="section-title" />
+                            <ui:DropdownField name="dd-gen-preset" label="Preset" choices="Alpine Islands,Desert,Rolling Hills,Canyons" index="0" class="field" />
+                            <ui:Toggle name="tgl-seamless-edges" label="Seamless chunk edges" value="true" class="field" />
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-generate-terrain" text="Generate terrain" class="btn btn--primary btn-full" />
+                        <ui:Label text="Generation replaces the current height data. Save your world before generating." class="note note--warn" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- 2. SCULPT -->
+                <ui:VisualElement name="pop-sculpt" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="SCULPT MODE" class="section-title" />
+                            <ui:VisualElement class="seg">
+                                <ui:Button name="btn-tool-hill" class="seg-btn seg-btn--active"><ui:VisualElement class="btn-icon icon-raise" /><ui:Label text="Raise" class="btn-lbl" /></ui:Button>
+                                <ui:Button name="btn-tool-valley" class="seg-btn"><ui:VisualElement class="btn-icon icon-lower" /><ui:Label text="Lower" class="btn-lbl" /></ui:Button>
+                                <ui:Button name="btn-tool-smooth" class="seg-btn"><ui:VisualElement class="btn-icon icon-smooth" /><ui:Label text="Smooth" class="btn-lbl" /></ui:Button>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="seg">
+                                <ui:Button name="btn-tool-flatten" class="seg-btn"><ui:VisualElement class="btn-icon icon-flatten" /><ui:Label text="Flatten" class="btn-lbl" /></ui:Button>
+                                <ui:Button name="btn-tool-erosion" text="Erosion" class="seg-btn" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="BRUSH" class="section-title" />
+                            <ui:Slider name="sld-brush-radius" label="Brush size" low-value="1" high-value="100" value="30" show-input-field="true" class="field" />
                             <ui:Slider name="sld-brush-strength" label="Strength" low-value="0.01" high-value="1" value="0.8" show-input-field="true" class="field" />
                             <ui:Slider name="sld-brush-falloff" label="Falloff" low-value="0" high-value="1" value="0.5" show-input-field="true" class="field" />
-                            <ui:FloatField name="fld-flatten-height" label="Target H" value="25" class="field" />
+                            <ui:DropdownField name="dd-brush-shape" label="Brush shape" choices="Soft round,Hard round,Square" index="0" class="field" />
+                            <ui:Toggle name="tgl-brush-outline" label="Show brush outline" value="true" class="field" />
                         </ui:VisualElement>
-
-                        <!-- STAMPS POPOVER -->
-                        <ui:VisualElement name="pop-stamps" class="popover-body hidden">
-                            <ui:DropdownField name="dd-heightmap-library" label="Heightmap" choices="MountainPeak,CanyonRidge,VolcanoCrater,PlateauFlat" index="0" class="field" />
-                            <ui:DropdownField name="dd-stamp-blend" label="Blend" choices="Add,Replace,Min,Max" index="0" class="field" />
-                            <ui:Slider name="sld-stamp-scale" label="Scale" low-value="10" high-value="250" value="80" show-input-field="true" class="field" />
-                            <ui:Slider name="sld-stamp-rotation" label="Rotate" low-value="0" high-value="360" value="0" show-input-field="true" class="field" />
-                            <ui:Toggle name="tgl-stamp-preview" label="Live Preview" value="true" class="field" />
-                            <ui:Button name="btn-apply-stamp" text="Apply Stamp" class="action-btn action-btn--primary" />
+                        <ui:VisualElement class="section">
+                            <ui:Label text="SCULPT OPTIONS" class="section-title" />
+                            <ui:FloatField name="fld-flatten-height" label="Flatten target" value="25" class="field" />
+                            <ui:Toggle name="tgl-lock-target" label="Lock target height" value="false" class="field" />
                         </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:VisualElement class="hint-row"><ui:Label text="LMB" class="hint-key" /><ui:Label text="Sculpt terrain" class="hint-text" /></ui:VisualElement>
+                            <ui:VisualElement class="hint-row"><ui:Label text="Shift + LMB" class="hint-key" /><ui:Label text="Invert brush" class="hint-text" /></ui:VisualElement>
+                            <ui:VisualElement class="hint-row"><ui:Label text="[ / ]" class="hint-key" /><ui:Label text="Adjust brush size" class="hint-text" /></ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-apply-sculpt" text="Apply sculpting" class="btn btn--primary btn-full" />
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
 
-                        <!-- ROADS & WATER POPOVER -->
-                        <ui:VisualElement name="pop-roads" class="popover-body hidden">
-                            <ui:VisualElement class="chip-grid-2">
-                                <ui:Button name="btn-builder-road" class="tool-chip">
-                                    <ui:VisualElement class="btn-icon icon-roads" />
-                                    <ui:Label text="Road" class="btn-lbl" />
-                                </ui:Button>
-                                <ui:Button name="btn-builder-river" class="tool-chip">
-                                    <ui:VisualElement class="btn-icon icon-river" />
-                                    <ui:Label text="River" class="btn-lbl" />
-                                </ui:Button>
-                                <ui:Button name="btn-builder-lake" text="Lake" class="tool-chip" />
-                                <ui:Button name="btn-builder-pond" text="Pond" class="tool-chip" />
+                <!-- 3. HEIGHTMAP -->
+                <ui:VisualElement name="pop-heightmap" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="SOURCE FILE" class="section-title" />
+                            <!-- Hidden backing field: the selected path is set by the native file picker. -->
+                            <ui:TextField name="fld-heightmap-path" value="" class="hidden" />
+                            <ui:VisualElement class="file-picker-row">
+                                <ui:Label name="lbl-heightmap-file" text="No heightmap selected" class="file-picker-name" />
+                                <ui:Button name="btn-heightmap-browse" text="Browse..." class="btn btn--soft" />
                             </ui:VisualElement>
-                            <ui:Slider name="sld-path-width" label="Width" low-value="2" high-value="30" value="8" show-input-field="true" class="field" />
-                            <ui:Slider name="sld-path-depth" label="Depth" low-value="0" high-value="10" value="1.5" show-input-field="true" class="field" />
+                            <ui:Button name="btn-heightmap-import" text="↑ Import &amp; Build" class="btn btn--primary btn-full" />
+                            <ui:Label text="PNG / JPG / EXR / RAW" class="note" />
+                            <ui:Toggle name="tgl-heightmap-big-endian" label="RAW Big Endian" value="false" class="field" />
+                            <ui:Toggle name="tgl-heightmap-flip-y" label="RAW Flip Vertical" value="false" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="IMPORTED HEIGHTMAPS" class="section-title" />
+                            <ui:VisualElement name="heightmap-preview" class="preview-box"><ui:Label name="lbl-heightmap-info" text="No preview" class="note" /></ui:VisualElement>
+                            <ui:VisualElement class="row">
+                                <ui:Button name="btn-heightmap-previous" text="‹" class="icon-btn" />
+                                <ui:Label name="lbl-selected-heightmap" text="Selected: (none)" class="field" />
+                                <ui:Button name="btn-heightmap-next" text="›" class="icon-btn" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="HEIGHT MAPPING" class="section-title" />
+                            <ui:Slider name="sld-heightmap-width" label="Width (m)" low-value="256" high-value="4096" value="1024" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-heightmap-length" label="Length (m)" low-value="256" high-value="4096" value="1024" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-heightmap-height" label="Height scale (m)" low-value="10" high-value="1000" value="1000" show-input-field="true" class="field" />
+                            <ui:FloatField name="fld-heightmap-offset" label="Offset (m)" value="0" class="field" />
+                            <ui:Toggle name="tgl-heightmap-normalize" label="Normalize heights" value="true" class="field" />
+                            <ui:Toggle name="tgl-heightmap-invert" label="Invert heightmap" value="false" class="field" />
+                            <ui:Toggle name="tgl-heightmap-clear-models" label="Clear placed trees/models" value="true" class="field" />
                             <ui:VisualElement class="btn-row">
-                                <ui:Button name="btn-spline-undo-pt" text="Undo Pt" class="action-btn action-btn--soft btn--grow" />
-                                <ui:Button name="btn-spline-finish" text="Finish" class="action-btn action-btn--primary btn--grow" />
-                                <ui:Button name="btn-spline-cancel" text="Cancel" class="action-btn action-btn--danger" />
+                                <ui:Button name="btn-heightmap-flip-h" text="↔ Flip horizontal" class="btn btn--soft" />
+                                <ui:Button name="btn-heightmap-flip-v" text="↕ Flip vertical" class="btn btn--soft btn-end" />
                             </ui:VisualElement>
-                            <ui:Slider name="sld-water-radius" label="Water Rad" low-value="5" high-value="120" value="30" show-input-field="true" class="field" />
-                            <ui:FloatField name="fld-water-level" label="Water Y" value="12" class="field" />
                         </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-heightmap-build" text="Rebuild terrain" class="btn btn--primary btn-full" />
+                        <ui:Label name="lbl-heightmap-status" text="Ready" class="status-hint note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
 
-                        <!-- PAINT (BIOMES) POPOVER -->
-                        <ui:VisualElement name="pop-paint" class="popover-body hidden">
+                <!-- 4. STAMP -->
+                <ui:VisualElement name="pop-stamps" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="STAMP SOURCE" class="section-title" />
+                            <ui:DropdownField name="dd-heightmap-library" label="Image selection" choices="MountainPeak,CanyonRidge,VolcanoCrater,PlateauFlat" index="0" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="TRANSFORM" class="section-title" />
+                            <ui:VisualElement class="row">
+                                <ui:FloatField name="fld-stamp-x" label="Position X" value="1024" class="field cell" />
+                                <ui:FloatField name="fld-stamp-z" label="Position Z" value="1024" class="field cell cell-end" />
+                            </ui:VisualElement>
+                            <ui:Slider name="sld-stamp-rotation" label="Rotation" low-value="0" high-value="360" value="0" show-input-field="true" class="field" />
+                            <ui:VisualElement name="row-stamp-scale-z" class="row hidden">
+                                <ui:FloatField name="fld-stamp-scale-z" label="Scale Z" value="80" class="field" />
+                            </ui:VisualElement>
+                            <ui:Slider name="sld-stamp-scale" label="Scale X" low-value="10" high-value="1000" value="80" show-input-field="true" class="field" />
+                            <ui:Toggle name="tgl-stamp-uniform" label="Uniform scale" value="true" class="field" />
+                            <ui:Slider name="sld-stamp-strength" label="Strength" low-value="0" high-value="1" value="0.7" show-input-field="true" class="field" />
+                            <ui:DropdownField name="dd-stamp-blend" label="Blend mode" choices="Add,Replace,Min,Max" index="0" class="field" />
+                            <ui:Toggle name="tgl-stamp-preview" label="Preview stamp bounds" value="true" class="field" />
+                            <ui:Label text="Drag in the viewport to reposition the stamp." class="note" />
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-apply-stamp" text="Apply stamp" class="btn btn--primary btn-full" />
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- 5. ROADS -->
+                <ui:VisualElement name="pop-roads" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="SPLINE" class="section-title" />
+                            <ui:VisualElement class="seg">
+                                <ui:Button name="btn-road-draw" text="Draw" class="seg-btn seg-btn--active" />
+                                <ui:Button name="btn-road-edit" text="Edit" class="seg-btn" />
+                            </ui:VisualElement>
+                            <ui:TextField name="txt-spline-name" label="Active spline" value="Road 01" class="field" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-spline-select" text="Select" class="btn btn--soft" />
+                                <ui:Button name="btn-spline-add-pt" text="+ Add point" class="btn btn--soft" />
+                                <ui:Button name="btn-spline-undo-pt" text="Remove point" class="btn btn--soft btn-end" />
+                            </ui:VisualElement>
+                            <ui:Toggle name="tgl-spline-closed" label="Closed spline" value="false" class="field" />
+                            <ui:Label name="lbl-spline-info" text="0 control points" class="note" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="ROAD PROFILE" class="section-title" />
+                            <ui:Slider name="sld-path-width" label="Width" low-value="2" high-value="30" value="8" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-road-thickness" label="Thickness" low-value="0.05" high-value="2" value="0.25" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-path-depth" label="Carve depth" low-value="0" high-value="10" value="1.5" show-input-field="true" class="field" />
+                            <ui:DropdownField name="dd-road-material" label="Material" choices="Gravel Alpine,Dirt,Cobblestone,Asphalt" index="0" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="TERRAIN ALIGNMENT" class="section-title" />
+                            <ui:Toggle name="tgl-road-align" label="Align to terrain" value="true" class="field" />
+                            <ui:Slider name="sld-road-offset" label="Surface offset" low-value="0" high-value="2" value="0.1" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-road-shoulder" label="Blend shoulder" low-value="0" high-value="20" value="3" show-input-field="true" class="field" />
+                            <ui:Label text="Drag a point to adjust the road spline." class="note" />
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:VisualElement class="btn-row">
+                            <ui:Button name="btn-spline-cancel" text="Cancel" class="btn btn--danger btn-fixed" />
+                            <ui:Button name="btn-spline-finish" text="Build road" class="btn btn--primary btn-end" />
+                        </ui:VisualElement>
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- 6. WATER -->
+                <ui:VisualElement name="pop-water" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="WATER TYPE" class="section-title" />
+                            <ui:VisualElement class="seg">
+                                <ui:Button name="btn-builder-river" class="seg-btn seg-btn--active"><ui:VisualElement class="btn-icon icon-river" /><ui:Label text="River" class="btn-lbl" /></ui:Button>
+                                <ui:Button name="btn-builder-lake" text="Lake" class="seg-btn" />
+                                <ui:Button name="btn-builder-pond" text="Pond" class="seg-btn" />
+                            </ui:VisualElement>
+                            <ui:TextField name="txt-water-name" label="Water body" value="River 01" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="SHAPE" class="section-title" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-water-draw" text="+ Draw spline" class="btn btn--soft" />
+                                <ui:Button name="btn-water-edit" text="Edit points" class="btn btn--soft" />
+                                <ui:Button name="btn-water-undo-pt" text="Undo pt" class="btn btn--soft btn-end" />
+                            </ui:VisualElement>
+                            <ui:Slider name="sld-water-width" label="Width" low-value="2" high-value="100" value="24" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-water-depth" label="Depth" low-value="0" high-value="20" value="4" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-water-radius" label="Lake radius" low-value="5" high-value="120" value="30" show-input-field="true" class="field" />
+                            <ui:FloatField name="fld-water-level" label="Water level" value="12" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="SURFACE" class="section-title" />
+                            <ui:DropdownField name="dd-water-material" label="Material" choices="Clear river Teal,Murky green,Glacial blue" index="0" class="field" />
+                            <ui:Slider name="sld-water-flow" label="Flow speed (m/s)" low-value="0" high-value="10" value="1.2" show-input-field="true" class="field" />
+                            <ui:Toggle name="tgl-carve-bed" label="Carve riverbed" value="true" class="field" />
+                            <ui:Toggle name="tgl-follow-slope" label="Follow terrain slope" value="true" class="field" />
+                            <ui:Label text="Riverbed carving updates terrain height along the water spline." class="note" />
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:VisualElement class="btn-row">
+                            <ui:Button name="btn-water-cancel" text="Cancel" class="btn btn--danger btn-fixed" />
+                            <ui:Button name="btn-water-finish" text="Create water" class="btn btn--primary btn-end" />
+                        </ui:VisualElement>
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- 7. PAINT -->
+                <ui:VisualElement name="pop-paint" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="TEXTURE LAYERS" class="section-title" />
+                            <ui:VisualElement name="paint-layer-list" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-add-layer" text="+ Add layer" class="btn btn--soft" />
+                                <ui:Button name="btn-manage-layers" text="Manage layers" class="btn btn--soft btn-end" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="BRUSH" class="section-title" />
+                            <ui:VisualElement class="seg">
+                                <ui:Button name="btn-paint-mode-paint" text="Paint" class="seg-btn seg-btn--active" />
+                                <ui:Button name="btn-paint-mode-erase" text="Erase" class="seg-btn" />
+                            </ui:VisualElement>
+                            <ui:Slider name="sld-paint-size" label="Brush size" low-value="1" high-value="200" value="48" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-paint-strength" label="Strength" low-value="0.01" high-value="1" value="0.6" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-paint-falloff" label="Falloff" low-value="0" high-value="1" value="0.7" show-input-field="true" class="field" />
+                            <ui:Toggle name="tgl-slope-mask" label="Slope based masking" value="false" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="AUTO PAINT" class="section-title" />
                             <ui:DropdownField name="dd-biome-preset" label="Biome" choices="Alpine,TemperateForest,AridDesert,Coastal" index="0" class="field" />
                             <ui:Toggle name="tgl-rule-height" label="Height Rules" value="true" class="field" />
                             <ui:Toggle name="tgl-rule-slope" label="Slope Rules" value="true" class="field" />
                             <ui:Toggle name="tgl-rule-worldpos" label="World Pos" value="true" class="field" />
                             <ui:Slider name="sld-layer-blend" label="Blend" low-value="0.1" high-value="1" value="0.85" show-input-field="true" class="field" />
-                            <ui:Button name="btn-paint-terrain" text="Auto-Paint Terrain" class="action-btn action-btn--primary" />
+                            <ui:Button name="btn-paint-terrain" text="Auto-Paint Terrain" class="btn btn--soft btn-full" />
                         </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:VisualElement class="hint-row"><ui:Label text="LMB" class="hint-key" /><ui:Label text="Paint selected texture" class="hint-text" /></ui:VisualElement>
+                            <ui:VisualElement class="hint-row"><ui:Label text="Shift + LMB" class="hint-key" /><ui:Label text="Erase texture" class="hint-text" /></ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-paint-start" text="Start painting" class="btn btn--primary btn-full" />
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
 
-                        <!-- NATURE (VEGETATION) POPOVER -->
-                        <ui:VisualElement name="pop-nature" class="popover-body hidden">
+                <!-- 8. MATERIALS -->
+                <ui:VisualElement name="pop-materials" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="ACTIVE MATERIAL" class="section-title" />
+                            <ui:DropdownField name="dd-material-active" label="Layer" choices="(none)" index="0" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="TEXTURE MAPS" class="section-title" />
+                            <ui:Label name="lbl-albedo-name" text="Base color: —" class="note" />
+                            <ui:Label name="lbl-normal-name" text="Normal map: —" class="note" />
+                            <ui:Button name="btn-import-terrain-layer" text="+ Import PBR Texture Set" class="btn btn--soft btn-full" />
+                            <ui:Label name="lbl-layer-import-status" text="No textures imported" class="status-hint note" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="SURFACE PROPERTIES" class="section-title" />
+                            <ui:Slider name="sld-metallic" label="Metallic" low-value="0" high-value="1" value="0" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-smoothness" label="Smoothness" low-value="0" high-value="1" value="0.25" show-input-field="true" class="field" />
+                            <ui:VisualElement class="row">
+                                <ui:FloatField name="fld-tiling-x" label="Tiling X" value="16" class="field cell" />
+                                <ui:FloatField name="fld-tiling-y" label="Tiling Y" value="16" class="field cell cell-end" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="row">
+                                <ui:FloatField name="fld-offset-x" label="Offset X" value="0" class="field cell" />
+                                <ui:FloatField name="fld-offset-y" label="Offset Y" value="0" class="field cell cell-end" />
+                            </ui:VisualElement>
+                            <ui:Toggle name="tgl-lock-tiling" label="Lock tiling ratio" value="true" class="field" />
+                            <ui:Label text="Changes apply to every terrain chunk using this material." class="note" />
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-apply-material" text="Apply material" class="btn btn--primary btn-full" />
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- 9. VEGETATION -->
+                <ui:VisualElement name="pop-nature" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="ASSET CATEGORY" class="section-title" />
+                            <ui:VisualElement class="seg">
+                                <ui:Button name="veg-cat-trees" text="Trees" class="seg-btn seg-btn--active" />
+                                <ui:Button name="veg-cat-grass" text="Grass" class="seg-btn" />
+                                <ui:Button name="veg-cat-rocks" text="Rocks" class="seg-btn" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="veg-asset-list" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-add-asset" text="+ Add asset" class="btn btn--soft" />
+                                <ui:Button name="btn-browse-assets" text="Browse assets" class="btn btn--soft btn-end" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="DISTRIBUTION" class="section-title" />
+                            <ui:Slider name="sld-veg-density" label="Density" low-value="0" high-value="1" value="0.7" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-veg-brush" label="Brush size" low-value="5" high-value="300" value="120" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-veg-min-scale" label="Min scale" low-value="0.1" high-value="3" value="0.8" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-veg-max-scale" label="Max scale" low-value="0.1" high-value="3" value="1.4" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-veg-slope" label="Slope limit (°)" low-value="0" high-value="90" value="35" show-input-field="true" class="field" />
+                            <ui:Toggle name="tgl-veg-random-rot" label="Random rotation" value="true" class="field" />
+                            <ui:Toggle name="tgl-veg-align" label="Align to surface" value="true" class="field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="PRESET &amp; PERFORMANCE" class="section-title" />
                             <ui:DropdownField name="dd-veg-preset" label="Preset" choices="DenseForest,Savanna,AlpineSparse,Wetlands" index="0" class="field" />
                             <ui:Toggle name="tgl-place-trees" label="Trees" value="true" class="field" />
                             <ui:Toggle name="tgl-place-grass" label="Grass" value="true" class="field" />
                             <ui:Toggle name="tgl-biome-dist" label="Biome Dist" value="true" class="field" />
-                            <ui:Slider name="sld-veg-density" label="Density" low-value="0" high-value="1" value="0.7" show-input-field="true" class="field" />
                             <ui:Slider name="sld-tree-dist" label="Tree Dist" low-value="50" high-value="2000" value="500" show-input-field="true" class="field" />
-                            <ui:Slider
-                                name="sld-tree-billboard-dist"
-                                label="Billboard Dist"
-                                low-value="0"
-                                high-value="500"
-                                value="200"
-                                show-input-field="true"
-                                class="field" />
+                            <ui:Slider name="sld-tree-billboard-dist" label="Billboard Dist" low-value="0" high-value="500" value="200" show-input-field="true" class="field" />
                             <ui:Slider name="sld-grass-dist" label="Grass Dist" low-value="10" high-value="300" value="80" show-input-field="true" class="field" />
                             <ui:Toggle name="tgl-veg-shadows" label="Shadows" value="true" class="field" />
-                            <ui:Button name="btn-populate-veg" text="Grow Vegetation" class="action-btn action-btn--green" />
-                            <ui:Button name="btn-clear-veg" text="Clear Vegetation" class="action-btn action-btn--danger" />
+                            <ui:Button name="btn-clear-veg" text="Clear Vegetation" class="btn btn--danger btn-full" />
                         </ui:VisualElement>
-
-                        <!-- SETTINGS (WORLD GEN, EXPANSION & SAVE/LOAD) POPOVER -->
-                        <ui:VisualElement name="pop-settings" class="popover-body hidden">
-                            <!-- HEIGHTMAP IMPORT -->
-                            <ui:Label text="Heightmap Import" class="sub-header" />
-
-                            <!-- Hidden backing field: the selected path is set by the native file picker. -->
-                            <ui:TextField name="fld-heightmap-path" value="" class="hidden" />
-                            <ui:VisualElement class="file-picker-row">
-                                <ui:Label name="lbl-heightmap-file" text="No heightmap selected" class="file-picker-name" />
-                                <ui:Button name="btn-heightmap-browse" text="Browse..." class="action-btn action-btn--soft" />
-                            </ui:VisualElement>
-                            <ui:VisualElement class="btn-row">
-                                <ui:Button
-                                    name="btn-heightmap-import"
-                                    text="Import &amp; Build"
-                                    class="action-btn action-btn--primary btn--grow" />
-                            </ui:VisualElement>
-
-                            <ui:Toggle
-                                name="tgl-heightmap-big-endian"
-                                label="RAW Big Endian"
-                                value="false"
-                                class="field" />
-
-                            <ui:Toggle
-                                name="tgl-heightmap-flip-y"
-                                label="RAW Flip Vertical"
-                                value="false"
-                                class="field" />
-
-                            <ui:Label text="Imported Heightmaps" class="sub-header" />
-
-                            <ui:VisualElement class="btn-row">
-                                <ui:Button
-                                    name="btn-heightmap-previous"
-                                    text="‹"
-                                    class="action-btn action-btn--soft" />
-
-                                <ui:Label
-                                    name="lbl-selected-heightmap"
-                                    text="Selected: (none)"
-                                    class="field" />
-
-                                <ui:Button
-                                    name="btn-heightmap-next"
-                                    text="›"
-                                    class="action-btn action-btn--soft" />
-                            </ui:VisualElement>
-
-                            <ui:Label text="Terrain Dimensions" class="sub-header" />
-
-                            <ui:Slider
-                                name="sld-heightmap-width"
-                                label="Width (m)"
-                                low-value="256"
-                                high-value="4096"
-                                value="1024"
-                                show-input-field="true"
-                                class="field" />
-
-                            <ui:Slider
-                                name="sld-heightmap-length"
-                                label="Length (m)"
-                                low-value="256"
-                                high-value="4096"
-                                value="1024"
-                                show-input-field="true"
-                                class="field" />
-
-                            <ui:Slider
-                                name="sld-heightmap-height"
-                                label="Height (m)"
-                                low-value="10"
-                                high-value="1000"
-                                value="1000"
-                                show-input-field="true"
-                                class="field" />
-
-                            <ui:Toggle
-                                name="tgl-heightmap-clear-models"
-                                label="Clear placed trees/models"
-                                value="true"
-                                class="field" />
-
-                            <ui:Button
-                                name="btn-heightmap-build"
-                                text="Build Terrain From Selected Heightmap"
-                                class="action-btn action-btn--primary" />
-
-                            <ui:Label
-                                name="lbl-heightmap-status"
-                                text="Ready"
-                                class="status-hint" />
-
-                            <ui:VisualElement
-                                class="section-divider" />
-                            <ui:Label text="Terrain Generation" class="sub-header" />
-                            <ui:DropdownField name="dd-heightmap-res" label="Resolution" choices="129,257,513,1025,2049" index="2" class="field" />
-                            <ui:IntegerField name="fld-terrain-size" label="Chunk Size" value="256" class="field" />
-                            <ui:FloatField name="fld-max-height" label="Max Height" value="120" class="field" />
-                            <ui:IntegerField name="fld-seed" label="Seed" value="12345" class="field" />
-                            <ui:Button name="btn-generate-terrain" text="Generate Terrain" class="action-btn action-btn--primary" />
-
-                            <ui:Label text="Terrain Testing" class="sub-header" />
-                            
-                            <ui:Button
-                                name="btn-edit-chunk"
-                                text="Edit Chunk (0,0)"
-                                class="action-btn action-btn--primary" />
-                            
-                            <ui:Label
-                                name="lbl-tester-status"
-                                text="Press Edit Chunk (0,0) first."
-                                class="status-hint" />
-
-                            <ui:Label text="Expand World (X / Z)" class="sub-header" />
-                            <ui:VisualElement class="btn-row">
-                                <ui:Button name="btn-expand-pos-z" text="+Z" class="action-btn action-btn--soft btn--grow" />
-                                <ui:Button name="btn-expand-neg-z" text="-Z" class="action-btn action-btn--soft btn--grow" />
-                                <ui:Button name="btn-expand-pos-x" text="+X" class="action-btn action-btn--soft btn--grow" />
-                                <ui:Button name="btn-expand-neg-x" text="-X" class="action-btn action-btn--soft btn--grow" />
-                            </ui:VisualElement>
-                            <ui:Button name="btn-verify-continuity" text="Verify Continuity" class="action-btn action-btn--soft" />
-
-                            <ui:Label text="Save &amp; Load" class="sub-header" />
-                            <ui:TextField name="txt-world-name" label="World" value="MyRuntimeWorld" class="field" />
-                            <ui:Toggle name="tgl-compress-chunks" label="Compress Chunks" value="true" class="field" />
-                            <ui:Toggle name="tgl-restore-stamps" label="Restore Stamps" value="true" class="field" />
-                            <ui:VisualElement class="btn-row">
-                                <ui:Button name="btn-save-world" text="Save" class="action-btn action-btn--primary btn--grow" />
-                                <ui:Button name="btn-load-world" text="Load" class="action-btn action-btn--soft btn--grow" />
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-
-                    </ui:ScrollView>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-populate-veg" text="Scatter vegetation" class="btn btn--green btn-full" />
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
+
+                <!-- 10. OBJECTS -->
+                <ui:VisualElement name="pop-objects" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="PREFAB LIBRARY" class="section-title" />
+                            <ui:DropdownField name="dd-object-category" label="Category" choices="Structures,Rocks,Trees" index="0" class="field" />
+                            <ui:VisualElement name="obj-asset-list" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-add-object" text="+ Add prefab" class="btn btn--soft" />
+                                <ui:Button name="btn-browse-objects" text="Browse" class="btn btn--soft btn-end" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="TRANSFORM" class="section-title" />
+                            <ui:VisualElement class="seg">
+                                <ui:Button name="btn-obj-move" text="Move" class="seg-btn seg-btn--active" />
+                                <ui:Button name="btn-obj-rotate" text="Rotate" class="seg-btn" />
+                                <ui:Button name="btn-obj-scale" text="Scale" class="seg-btn" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="row">
+                                <ui:FloatField name="fld-obj-x" label="Position X" value="0" class="field cell" />
+                                <ui:FloatField name="fld-obj-z" label="Position Z" value="0" class="field cell cell-end" />
+                            </ui:VisualElement>
+                            <ui:FloatField name="fld-obj-y" label="Height Y" value="0" class="field" />
+                            <ui:Slider name="sld-obj-rotation" label="Rotation Y" low-value="0" high-value="360" value="0" show-input-field="true" class="field" />
+                            <ui:Slider name="sld-obj-scale" label="Uniform scale" low-value="0.1" high-value="5" value="1" show-input-field="true" class="field" />
+                            <ui:Toggle name="tgl-obj-snap" label="Snap to terrain" value="true" class="field" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-obj-duplicate" text="Duplicate" class="btn btn--soft" />
+                                <ui:Button name="btn-obj-delete" text="Delete" class="btn btn--danger btn-end" />
+                            </ui:VisualElement>
+                            <ui:Label name="lbl-selected-object" text="Selected: (none)" class="note" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:VisualElement class="hint-row"><ui:Label text="W" class="hint-key" /><ui:Label text="Move" class="hint-text" /></ui:VisualElement>
+                            <ui:VisualElement class="hint-row"><ui:Label text="E" class="hint-key" /><ui:Label text="Rotate" class="hint-text" /></ui:VisualElement>
+                            <ui:VisualElement class="hint-row"><ui:Label text="R" class="hint-key" /><ui:Label text="Scale" class="hint-text" /></ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-place-prefab" text="Place prefab" class="btn btn--primary btn-full" />
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- 11. CHUNKS -->
+                <ui:VisualElement name="pop-chunks" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="GRID SETUP" class="section-title" />
+                            <ui:VisualElement class="row">
+                                <ui:IntegerField name="fld-chunk-cols" label="Columns" value="4" class="field cell" />
+                                <ui:IntegerField name="fld-chunk-rows" label="Rows" value="4" class="field cell cell-end" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="row">
+                                <ui:FloatField name="fld-chunk-width" label="Width (m)" value="512" class="field cell" />
+                                <ui:FloatField name="fld-chunk-depth" label="Depth (m)" value="512" class="field cell cell-end" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="chunk-grid" class="chunk-grid" />
+                            <ui:Label name="lbl-chunk-active" text="16 active chunks · none selected" class="note" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="SELECTED CHUNK" class="section-title" />
+                            <ui:Label name="lbl-selected-chunk" text="Chunk —" class="active-tool-name" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-chunk-add" text="+ Add chunk" class="btn btn--soft" />
+                                <ui:Button name="btn-chunk-remove" text="Remove" class="btn btn--danger btn-end" />
+                            </ui:VisualElement>
+                            <ui:Toggle name="tgl-chunk-edges" label="Preserve edge continuity" value="true" class="field" />
+                            <ui:Toggle name="tgl-chunk-selected-only" label="Regenerate selected only" value="false" class="field" />
+                            <ui:VisualElement class="stat-row">
+                                <ui:VisualElement class="stat"><ui:Label text="WORLD" class="stat-key" /><ui:Label name="lbl-world-dims" text="2,048 × 2,048 m" class="stat-val" /></ui:VisualElement>
+                                <ui:VisualElement class="stat"><ui:Label text="CHUNK RES" class="stat-key" /><ui:Label name="lbl-chunk-res" text="513 × 513" class="stat-val" /></ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="EXPAND WORLD (X / Z)" class="section-title" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-expand-pos-z" text="+Z" class="btn btn--soft" />
+                                <ui:Button name="btn-expand-neg-z" text="-Z" class="btn btn--soft" />
+                                <ui:Button name="btn-expand-pos-x" text="+X" class="btn btn--soft" />
+                                <ui:Button name="btn-expand-neg-x" text="-X" class="btn btn--soft btn-end" />
+                            </ui:VisualElement>
+                            <ui:Button name="btn-verify-continuity" text="Verify Continuity" class="btn btn--soft btn-full" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="TERRAIN TESTING" class="section-title" />
+                            <ui:Button name="btn-edit-chunk" text="Edit Chunk (0,0)" class="btn btn--soft btn-full" />
+                            <ui:Label name="lbl-tester-status" text="Press Edit Chunk (0,0) first." class="status-hint note" />
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:Button name="btn-regenerate-chunks" text="Regenerate chunks" class="btn btn--primary btn-full" />
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- 12. WORLD MANAGEMENT -->
+                <ui:VisualElement name="pop-world" class="page hidden">
+                    <ui:ScrollView class="page-scroll"><ui:VisualElement class="page-body">
+                        <ui:VisualElement class="section section--first">
+                            <ui:Label text="CURRENT WORLD" class="section-title" />
+                            <ui:TextField name="txt-world-name" label="World name" value="MyRuntimeWorld" class="field" />
+                            <ui:Button name="btn-save-as" text="Save as…" class="btn btn--soft btn-full" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="SAVED WORLDS" class="section-title" />
+                            <ui:VisualElement name="world-list" />
+                            <ui:Label name="lbl-no-worlds" text="No saved worlds listed." class="note" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="section">
+                            <ui:Label text="WORLD DATA" class="section-title" />
+                            <ui:VisualElement class="btn-row">
+                                <ui:Button name="btn-import-json" text="↑ Import JSON" class="btn btn--soft" />
+                                <ui:Button name="btn-export-json" text="↓ Export JSON" class="btn btn--soft btn-end" />
+                            </ui:VisualElement>
+                            <ui:Toggle name="tgl-compress-chunks" label="Compress chunks" value="true" class="field" />
+                            <ui:Toggle name="tgl-restore-stamps" label="Restore stamps" value="true" class="field" />
+                            <ui:Toggle name="tgl-include-features" label="Include vegetation &amp; features" value="true" class="field" />
+                            <ui:Toggle name="tgl-autosave" label="Autosave every 5 minutes" value="true" class="field" />
+                            <ui:Label name="lbl-last-saved" text="Last saved: —" class="note" />
+                            <ui:Label name="lbl-storage" text="" class="note" />
+                        </ui:VisualElement>
+                    </ui:VisualElement></ui:ScrollView>
+                    <ui:VisualElement class="page-footer">
+                        <ui:VisualElement class="btn-row">
+                            <ui:Button name="btn-load-world" text="Load" class="btn btn--soft btn-fixed" />
+                            <ui:Button name="btn-save-world" text="Save world" class="btn btn--primary btn-end" />
+                        </ui:VisualElement>
+                        <ui:Label text="Changes affect the current world only" class="note" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
             </ui:VisualElement>
 
-            <!-- TOP-RIGHT MINI MAP + LAYERS TOGGLE -->
-            <ui:VisualElement name="right-cluster" class="right-cluster" picking-mode="Ignore">
-                <ui:VisualElement name="minimap-card" class="minimap-card">
-                    <ui:VisualElement name="minimap-viewport" class="minimap-viewport">
-                        <ui:Label name="lbl-chunk-count" text="Chunks: 1" class="minimap-badge" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="minimap-controls">
-                        <ui:Button name="btn-map-zoom-in" text="+" class="map-btn" />
-                        <ui:Button name="btn-map-zoom-out" text="-" class="map-btn" />
-                        <ui:Button name="btn-map-recenter" text="⌖" class="map-btn" />
+            <!-- Viewport pill (sits to the right of the tool panel) -->
+            <ui:VisualElement name="viewport-pill" class="viewport-pill">
+                <ui:DropdownField name="dd-view-mode" choices="Perspective,Top,Front,Side" index="0" class="pill-dd" />
+                <ui:VisualElement class="pill-divider" />
+                <ui:DropdownField name="dd-shading-mode" choices="Lit,Unlit,Wireframe" index="0" class="pill-dd" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ================= RIGHT CLUSTER ================= -->
+        <ui:VisualElement name="right-cluster" class="right-cluster" picking-mode="Ignore">
+            <ui:VisualElement class="right-top" picking-mode="Ignore">
+                <ui:VisualElement class="card">
+                    <ui:Label text="ACTIVE TOOL" class="card-caption" />
+                    <ui:Label name="lbl-active-tool" text="Generate" class="active-tool-name" />
+                    <ui:Label name="lbl-active-detail" text="" class="active-tool-detail" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card">
+                    <ui:VisualElement class="compass-row">
+                        <ui:Button name="btn-compass" class="gizmo-btn">
+                            <ui:Label text="N" class="compass-n" />
+                            <ui:Label name="compass-arrow" text="↑" class="compass-arrow" />
+                        </ui:Button>
+                        <ui:VisualElement class="compass-row">
+                            <ui:Button name="btn-axis-y" text="Y" class="gizmo-btn axis axis-y" />
+                            <ui:Button name="btn-axis-z" text="Z" class="gizmo-btn axis axis-z" />
+                            <ui:Button name="btn-axis-x" text="X" class="gizmo-btn axis axis-x" />
+                        </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
-
                 <ui:Button name="btn-toggle-layers" class="layers-pill-btn">
-                    <ui:VisualElement class="btn-icon icon-layers" />
-                    <ui:Label text="Layers" class="btn-lbl" />
+                    <ui:VisualElement class="btn-icon icon-layers" /><ui:Label text="Layers" class="btn-lbl" />
                 </ui:Button>
-
                 <ui:VisualElement name="layers-popover" class="layers-popover hidden">
-                    <ui:Label text="World Layers" class="sub-header" />
+                    <ui:Label text="WORLD LAYERS" class="section-title" />
                     <ui:Toggle name="tgl-layer-terrain" label="Terrain" value="true" class="field" />
                     <ui:Toggle name="tgl-layer-water" label="Water" value="true" class="field" />
                     <ui:Toggle name="tgl-layer-roads" label="Roads" value="true" class="field" />
@@ -344,66 +633,60 @@
                 </ui:VisualElement>
             </ui:VisualElement>
 
+            <ui:VisualElement name="minimap-card" class="card">
+                <ui:Label text="OVERVIEW" class="card-caption" />
+                <ui:VisualElement name="minimap-viewport" class="minimap-viewport" />
+                <ui:VisualElement class="minimap-controls">
+                    <ui:Button name="btn-map-zoom-in" text="+" class="map-btn" />
+                    <ui:Button name="btn-map-zoom-out" text="-" class="map-btn" />
+                    <ui:Button name="btn-map-recenter" text="⌖" class="map-btn" />
+                    <ui:Label name="lbl-map-zoom" text="100%" class="map-readout" />
+                </ui:VisualElement>
+                <ui:Label name="lbl-map-scale" text="1 : 8,000" class="note" />
+            </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- CENTERED "ADD TO ASSET LIBRARY" MODAL -->
+        <!-- ================= STATUS BAR ================= -->
+        <ui:VisualElement name="status-bar" class="status-bar">
+            <ui:VisualElement class="status-group">
+                <ui:VisualElement class="status-dot" />
+                <ui:Label name="lbl-status-msg" text="Ready" class="status-hint-ok" />
+                <ui:Label name="lbl-coords" text="X 0.0  Y 0.0  Z 0.0" class="status-item" />
+                <ui:Label name="lbl-world-size" text="—" class="status-item" />
+            </ui:VisualElement>
+            <ui:VisualElement class="status-group">
+                <ui:Label text="RMB Orbit" class="status-item" />
+                <ui:Label text="MMB Pan" class="status-item" />
+                <ui:Label text="Scroll Zoom" class="status-item" />
+                <ui:Label text="F Focus terrain" class="status-item" />
+                <ui:Label text="H Hide UI" class="status-item" />
+            </ui:VisualElement>
+            <ui:VisualElement class="status-group">
+                <ui:Label name="lbl-chunk-count" text="Chunks: 1" class="status-item" />
+                <ui:Label name="lbl-vertex-count" text="" class="status-item" />
+                <ui:Label name="lbl-fps" text="" class="status-item" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ================= ADD TO ASSET LIBRARY MODAL ================= -->
         <ui:VisualElement name="add-library-modal-backdrop" class="modal-backdrop hidden">
             <ui:VisualElement name="add-library-modal" class="modal-card">
                 <ui:VisualElement class="modal-header">
                     <ui:Label text="Add to Asset Library" class="modal-title" />
                     <ui:Button name="btn-close-modal" text="✕" class="icon-btn" />
                 </ui:VisualElement>
-
                 <ui:VisualElement class="modal-body">
-                    <ui:VisualElement class="modal-form">
-                        <ui:DropdownField name="dd-new-item-category" label="Category" choices="Hills,Roads,Rivers,Trees,Grass,Rocks,Textures,Buildings" index="7" class="field" />
-                        <ui:TextField name="txt-new-item-name" label="Name" value="Stone Cabin" class="field" />
-                        <ui:VisualElement class="browse-row">
-                            <ui:TextField name="txt-new-item-asset" label="Prefab/Asset" value="StoneCabin.prefab" class="field browse-field" />
-                            <ui:Button name="btn-browse-asset" text="Browse" class="action-btn action-btn--soft" />
-                        </ui:VisualElement>
-                        <ui:Toggle name="tgl-new-item-snap" label="Snap to Ground" value="true" class="field" />
+                    <ui:DropdownField name="dd-new-item-category" label="Category" choices="Hills,Roads,Rivers,Trees,Grass,Rocks,Textures,Buildings" index="7" class="field" />
+                    <ui:TextField name="txt-new-item-name" label="Name" value="Stone Cabin" class="field" />
+                    <ui:VisualElement class="browse-row">
+                        <ui:TextField name="txt-new-item-asset" label="Prefab/Asset" value="StoneCabin.prefab" class="field browse-field" />
+                        <ui:Button name="btn-browse-asset" text="Browse" class="btn btn--soft" />
                     </ui:VisualElement>
-
-                    <ui:VisualElement class="modal-preview-box">
-                        <ui:Label text="Preview" class="preview-caption" />
-                    </ui:VisualElement>
+                    <ui:Toggle name="tgl-new-item-snap" label="Snap to Ground" value="true" class="field" />
                 </ui:VisualElement>
-
                 <ui:VisualElement class="modal-footer">
-                    <ui:Button name="btn-cancel-modal" text="Cancel" class="action-btn action-btn--soft" />
-                    <ui:Button name="btn-confirm-add-item" text="Add Item" class="action-btn action-btn--primary" />
-                </ui:VisualElement>
-            </ui:VisualElement>
-        </ui:VisualElement>
-
-        <!-- BOTTOM ASSET LIBRARY BAR -->
-        <ui:VisualElement name="bottom-dock-wrap" class="bottom-dock-wrap" picking-mode="Ignore">
-            <ui:VisualElement name="asset-library-bar" class="asset-library-bar">
-                <ui:VisualElement class="library-header">
-                    <ui:Label text="ASSET LIBRARY" class="library-title" />
-                    <ui:Label name="lbl-status-msg" text="Ready" class="status-hint" />
-                    <ui:Button name="btn-minimize-library" text="⌄" class="icon-btn" />
-                </ui:VisualElement>
-
-                <ui:VisualElement name="library-content" class="library-content">
-                    <ui:VisualElement class="library-tabs-row">
-                        <ui:VisualElement class="library-tabs">
-                            <ui:Button name="lib-tab-hills" text="Hills" class="lib-tab lib-tab--active" />
-                            <ui:Button name="lib-tab-roads" text="Roads" class="lib-tab" />
-                            <ui:Button name="lib-tab-rivers" text="Rivers" class="lib-tab" />
-                            <ui:Button name="lib-tab-trees" text="Trees" class="lib-tab" />
-                            <ui:Button name="lib-tab-grass" text="Grass" class="lib-tab" />
-                            <ui:Button name="lib-tab-rocks" text="Rocks" class="lib-tab" />
-                            <ui:Button name="lib-tab-textures" text="Textures" class="lib-tab" />
-                            <ui:Button name="lib-tab-buildings" text="Buildings" class="lib-tab" />
-                        </ui:VisualElement>
-                        <ui:Button name="btn-open-add-modal" text="+ Add" class="add-lib-btn" />
-                    </ui:VisualElement>
-
-                    <ui:ScrollView name="library-cards-scroll" mode="Horizontal" horizontal-scroller-visibility="Auto" class="library-cards-scroll">
-                        <ui:VisualElement name="library-cards-container" class="library-cards-container" />
-                    </ui:ScrollView>
+                    <ui:Button name="btn-cancel-modal" text="Cancel" class="btn btn--soft" />
+                    <ui:Button name="btn-confirm-add-item" text="Add Item" class="btn btn--primary" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

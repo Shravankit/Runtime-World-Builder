@@ -240,6 +240,19 @@ MonoBehaviour:
     AssetPath: Buildings/TimberCabin
     SnapToGround: 1
     Thumbnail: {fileID: 0}
+  paintLayers:
+  - Name: Alpine grass
+    Color: {r: 0.36, g: 0.56, b: 0.26, a: 1}
+    Coverage: 0.64
+    IsBase: 1
+  - Name: Granite rock
+    Color: {r: 0.55, g: 0.55, b: 0.58, a: 1}
+    Coverage: 0.28
+    IsBase: 0
+  - Name: Riverbed gravel
+    Color: {r: 0.62, g: 0.56, b: 0.45, a: 1}
+    Coverage: 0.08
+    IsBase: 0
 --- !u!1 &1206677149
 GameObject:
   m_ObjectHideFlags: 0
@@ -251,6 +264,8 @@ GameObject:
   - component: {fileID: 1206677152}
   - component: {fileID: 1206677151}
   - component: {fileID: 1206677150}
+  - component: {fileID: 1206677154}
+  - component: {fileID: 1206677153}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -332,6 +347,72 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1206677153
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1206677149}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7254b9ada869048418eb9d49f187c2c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultPitch: 35
+  frameMargin: 1.08
+  orbitSpeed: 3
+  keyOrbitSpeed: 90
+  pitchLimits: {x: 5, y: 89}
+  panSpeed: 1
+  zoomSpeed: 0.12
+  minDistance: 20
+  maxDistance: 8000
+  smoothing: 14
+--- !u!114 &1206677154
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1206677149}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
 --- !u!1 &1709103531
 GameObject:
   m_ObjectHideFlags: 0
@@ -467,6 +548,10 @@ GameObject:
   - component: {fileID: 2064476717}
   - component: {fileID: 2064476718}
   - component: {fileID: 2064476719}
+  - component: {fileID: 2064476720}
+  - component: {fileID: 2064476721}
+  - component: {fileID: 2064476722}
+  - component: {fileID: 2064476723}
   m_Layer: 0
   m_Name: TerrainManager
   m_TagString: Untagged
@@ -568,7 +653,8 @@ MonoBehaviour:
   materials:
     road: {fileID: 0}
     bridge: {fileID: 0}
-    water: {fileID: 0}
+    water: {fileID: 2100000, guid: 8b3e0ffc282901042ba0315c2587f485, type: 2}
+    lake: {fileID: 2100000, guid: d683587ad72e48b4a94d1923cdf8dd07, type: 2}
   road:
     width: 8
     shoulder: 6
@@ -582,11 +668,11 @@ MonoBehaviour:
   pondRadius: 12
   pondDepth: 2
   shapeRadius: 80
-  hillHeight: 30
-  valleyDepth: 20
-  flattenRadius: 40
+  raiseMetersPerSecond: 25
+  erosionTalusDegrees: 30
   stamper: {fileID: 2064476716}
   uiDocument: {fileID: 124177039}
+  builderUI: {fileID: 124177041}
 --- !u!114 &2064476719
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -609,6 +695,73 @@ MonoBehaviour:
   sizeX: 1024
   sizeZ: 1024
   heightM: 1000
+  waitForVegetation: 1
+  maxWaitSeconds: 90
+--- !u!114 &2064476720
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2064476713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00b0a20138eb5a14baf178dd9b02264d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tileSize: {x: 15, y: 15}
+  tileOffset: {x: 0, y: 0}
+  uiDocument: {fileID: 124177039}
+--- !u!114 &2064476721
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2064476713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cefb0096aeea1c843932ce05a940e3ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  eyeHeight: 1.7
+  walkSpeed: 4
+  runSpeed: 9
+  mouseSensitivity: 2
+  fieldOfView: 70
+  stepHeight: 1.2
+  maxSlopeDegrees: 55
+  placeKey: 109
+  walkKey: 118
+  uiDocument: {fileID: 124177039}
+--- !u!114 &2064476722
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2064476713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb7a2dd41661a66449fc13ebef963a48, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  uiDocument: {fileID: 124177039}
+--- !u!114 &2064476723
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2064476713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c79535ad0f648224c9b47ee0b0b0ecb2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vegetation: {fileID: 11400000, guid: 80a2673a13d6d984f970f77fc10c63bf, type: 2}
+  biome: {fileID: 11400000, guid: 65b9919298522704d9e9c867b5ddbbdd, type: 2}
+  key: 290
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.Reflection;
 using RuntimeWorldBuilder.Core.Service;
@@ -32,7 +33,13 @@ namespace RuntimeWorldBuilder.Runtime.Import
         [Header("Terrain Settings")]
         [SerializeField] private float sizeX = 1024f;
         [SerializeField] private float sizeZ = 1024f;
-        [SerializeField, Range(10f, 1000f)] private float heightM = 1000f;
+        [SerializeField, Range(10f, 1000f)] private float heightM = 500f;
+
+        [Header("Loading")]
+        [Tooltip("Keep the loading screen up until texture painting and vegetation are finished.")]
+        [SerializeField] private bool waitForVegetation = true;
+        [Tooltip("Safety limit. After this the loading screen closes and the rest finishes in the background.")]
+        [SerializeField] private float maxWaitSeconds = 90f;
 
         private int pick;
         private VisualElement root;
@@ -42,6 +49,8 @@ namespace RuntimeWorldBuilder.Runtime.Import
         private Label selectedHeightmapLabel, statusLabel, fileLabel;
         private Button previousButton, nextButton, importButton, buildButton, browseButton;
         private bool uiInitialized;
+        private LoadingOverlay overlay;
+        private bool building;
 
         private static T FindOne<T>() where T : UnityEngine.Object
         {
@@ -110,6 +119,8 @@ namespace RuntimeWorldBuilder.Runtime.Import
             buildButton.clicked += Build;
             previousButton.clicked += SelectPreviousHeightmap;
             nextButton.clicked += SelectNextHeightmap;
+
+            overlay = new LoadingOverlay(root);   // added last so it sits on top of everything
             uiInitialized = true;
         }
 
@@ -149,17 +160,111 @@ namespace RuntimeWorldBuilder.Runtime.Import
 
         private void Import()
         {
-            if (library == null) { SetStatus("Assign a HeightmapLibrary in the Inspector."); return; }
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) { SetStatus("Choose an existing heightmap file first."); return; }
+            if (!building) StartCoroutine(Run(true));
+        }
 
-            Texture2D texture = HeightmapImporter.Load(path, bigEndian, flipY, true, out string error);
-            if (texture == null) { SetStatus("Import failed: " + error); return; }
+        private void Build()
+        {
+            if (!building) StartCoroutine(Run(false));
+        }
 
-            pick = library.AddRuntime(texture);
-            HeightmapStamp.Warm(texture);
-            RefreshHeightmapSelection();
-            SetStatus("Imported " + texture.name + ". Rebuilding terrain...");
-            Build();
+        /// Import (optional) + rebuild + stamp, with a loading screen the whole time.
+        /// The heavy calls still block for a moment, so the overlay is shown and given two frames to paint first.
+        private IEnumerator Run(bool importFirst)
+        {
+            building = true;
+            overlay?.Show(importFirst ? "Importing terrain" : "Building terrain", "Preparing...");
+            yield return null;
+            yield return null;
+
+            try
+            {
+                if (library == null) { SetStatus("Assign a HeightmapLibrary in the Inspector."); yield break; }
+
+                if (importFirst)
+                {
+                    if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) { SetStatus("Choose an existing heightmap file first."); yield break; }
+
+                    overlay?.Set("Reading " + Path.GetFileName(path) + "...");
+                    yield return null;
+
+                    Texture2D imported = HeightmapImporter.Load(path, bigEndian, flipY, true, out string error);
+                    if (imported == null) { SetStatus("Import failed: " + error); yield break; }
+
+                    overlay?.Set("Processing heightmap...");
+                    yield return null;
+
+                    pick = library.AddRuntime(imported);
+                    HeightmapStamp.Warm(imported);
+                    RefreshHeightmapSelection();
+                }
+
+                if (library.Count == 0) { SetStatus("No heightmap available."); yield break; }
+                if (tester == null) { SetStatus("Assign the TerrainWorldTester."); yield break; }
+                if (!ServiceRegistry.TryResolve<TerrainSettings>(out TerrainSettings settings)) { SetStatus("Terrain not initialised yet."); yield break; }
+
+                pick = Mathf.Clamp(pick, 0, library.Count - 1);
+                Texture2D texture = library.Get(pick);
+                if (texture == null) { SetStatus("Selected heightmap is missing."); yield break; }
+
+                float chunkSize = settings.chunkSize;
+                int chunksX = Mathf.Clamp(Mathf.CeilToInt(sizeX / chunkSize), 1, MaxChunksPerSide);
+                int chunksZ = Mathf.Clamp(Mathf.CeilToInt(sizeZ / chunkSize), 1, MaxChunksPerSide);
+                float finalHeight = Mathf.Clamp(heightM, 10f, 1000f);
+                if (clearModels) ClearPlacedModels();
+
+                overlay?.Set($"Generating {chunksX * chunksZ} terrain chunks...");
+                yield return null;
+                yield return null;
+
+                // RebuildWorld also removes roads, rivers, lakes and markers from the old terrain (FeatureEvents).
+                var world = tester.RebuildWorld(Vector2Int.zero, new Vector2Int(chunksX - 1, chunksZ - 1));
+                if (world == null) { SetStatus("Failed to rebuild terrain world."); yield break; }
+
+                overlay?.Set("Applying heightmap...");
+                yield return null;
+
+                float padding = settings.CellSpacing * 2f;
+                var stamp = new HeightmapStamp
+                {
+                    heightmap = texture,
+                    position = new Vector2(chunksX * chunkSize * 0.5f, chunksZ * chunkSize * 0.5f),
+                    size = new Vector2(chunksX * chunkSize + padding, chunksZ * chunkSize + padding),
+                    yawDegrees = 0f,
+                    heightMeters = finalHeight,
+                    baseY = 0f,
+                    blend = StampBlend.Replace,
+                    edgeFalloff = 0f,
+                    strength = 1f,
+                    invert = false
+                };
+                world.PlaceStamp(stamp);
+                world.ClearHistory();   // the import is a fresh start: undo must not reach back into the previous terrain
+
+                // Texture painting and vegetation run in slices on TerrainWorld.Tick. Wait for them with a progress bar.
+                if (waitForVegetation)
+                {
+                    int total = 1;
+                    float progress = 0f;
+                    float startTime = Time.unscaledTime;
+                    while (world.PendingWorkCount > 0 && Time.unscaledTime - startTime < maxWaitSeconds)
+                    {
+                        world.Tick(16f);    // extra budget: the overlay hides the framerate drop anyway
+                        int pending = world.PendingWorkCount;
+                        total = Mathf.Max(total, pending);
+                        progress = Mathf.Max(progress, 1f - pending / (float)total);
+                        overlay?.Set("Painting terrain and planting vegetation...", progress);
+                        yield return null;
+                    }
+                }
+
+                SetStatus($"Built {chunksX * chunkSize:F0} x {chunksZ * chunkSize:F0} m terrain from '{texture.name}', max height {finalHeight:F0} m.");
+            }
+            finally
+            {
+                overlay?.Hide();
+                building = false;
+            }
         }
 
         private void SelectPreviousHeightmap()
@@ -199,42 +304,6 @@ namespace RuntimeWorldBuilder.Runtime.Import
                 MethodInfo method = behaviour.GetType().GetMethod("ClearAll", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (method != null) method.Invoke(behaviour, null);
             }
-        }
-
-        private void Build()
-        {
-            if (library == null || library.Count == 0) { SetStatus("No heightmap available."); return; }
-            if (tester == null) { SetStatus("Assign the TerrainWorldTester."); return; }
-            if (!ServiceRegistry.TryResolve<TerrainSettings>(out TerrainSettings settings)) { SetStatus("Terrain not initialised yet."); return; }
-            pick = Mathf.Clamp(pick, 0, library.Count - 1);
-            Texture2D texture = library.Get(pick);
-            if (texture == null) { SetStatus("Selected heightmap is missing."); return; }
-
-            float chunkSize = settings.chunkSize;
-            int chunksX = Mathf.Clamp(Mathf.CeilToInt(sizeX / chunkSize), 1, MaxChunksPerSide);
-            int chunksZ = Mathf.Clamp(Mathf.CeilToInt(sizeZ / chunkSize), 1, MaxChunksPerSide);
-            float finalHeight = Mathf.Clamp(heightM, 10f, 1000f);
-            if (clearModels) ClearPlacedModels();
-
-            var world = tester.RebuildWorld(Vector2Int.zero, new Vector2Int(chunksX - 1, chunksZ - 1));
-            if (world == null) { SetStatus("Failed to rebuild terrain world."); return; }
-
-            float padding = settings.CellSpacing * 2f;
-            var stamp = new HeightmapStamp
-            {
-                heightmap = texture,
-                position = new Vector2(chunksX * chunkSize * 0.5f, chunksZ * chunkSize * 0.5f),
-                size = new Vector2(chunksX * chunkSize + padding, chunksZ * chunkSize + padding),
-                yawDegrees = 0f,
-                heightMeters = finalHeight,
-                baseY = 0f,
-                blend = StampBlend.Replace,
-                edgeFalloff = 0f,
-                strength = 1f,
-                invert = false
-            };
-            world.PlaceStamp(stamp);
-            SetStatus($"Built {chunksX * chunkSize:F0} x {chunksZ * chunkSize:F0} m terrain from '{texture.name}', max height {finalHeight:F0} m.");
         }
 
         private void SetStatus(string message)

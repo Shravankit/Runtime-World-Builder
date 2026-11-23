@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using RuntimeWorldBuilder.Core.Service;
@@ -48,6 +47,12 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
         private bool uiInitialized;
 
+        // Runtime material layers shared by every terrain chunk.
+        private TerrainLayer[] runtimeTerrainLayers =
+            Array.Empty<TerrainLayer>();
+
+        private bool lastCanUndo, lastCanRedo;
+
         // --------------------------------------------------
         // INITIALIZATION
         // --------------------------------------------------
@@ -75,6 +80,8 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                     biomeSettings,
                     vegetationSettings
                 );
+
+                ApplyLayersToGeneratedChunks();
 
                 ServiceRegistry.Register(settings);
                 ServiceRegistry.Register(world);
@@ -174,6 +181,15 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
             world.Tick(4f);
 
+            // Keep Undo/Redo buttons in sync with the history, whatever caused the change
+            bool canUndo = world.CanUndo, canRedo = world.CanRedo;
+            if (canUndo != lastCanUndo || canRedo != lastCanRedo)
+            {
+                lastCanUndo = canUndo;
+                lastCanRedo = canRedo;
+                RefreshUndoRedoButtons();
+            }
+
             bool ctrl =
                 Input.GetKey(KeyCode.LeftControl) ||
                 Input.GetKey(KeyCode.RightControl) ||
@@ -183,7 +199,6 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             if (!ctrl)
                 return;
 
-            // Don't trigger shortcuts while editing a text field.
             if (uiInitialized &&
                 root != null &&
                 root.focusController.focusedElement is TextField)
@@ -195,10 +210,8 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
             if (Input.GetKeyDown(KeyCode.Z))
             {
-                if (shift)
-                    DoRedo();
-                else
-                    DoUndo();
+                if (shift) DoRedo();
+                else DoUndo();
             }
             else if (Input.GetKeyDown(KeyCode.Y))
             {
@@ -210,9 +223,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         // REBUILD WORLD
         // --------------------------------------------------
 
-        public TerrainWorld RebuildWorld(
-            Vector2Int min,
-            Vector2Int max)
+        public TerrainWorld RebuildWorld(Vector2Int min, Vector2Int max)
         {
             if (settings == null)
             {
@@ -256,20 +267,23 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
                 world = newWorld;
 
+                ApplyLayersToGeneratedChunks();
+
                 ServiceRegistry.Register(settings);
                 ServiceRegistry.Register(world);
 
                 if (oldWorld != null)
                     oldWorld.DestroyAll();
 
+                // Roads, rivers, lakes and markers belong to the old terrain
+                RuntimeWorldBuilder.Runtime.Features.FeatureEvents.RequestClear();
+
                 editValue = -1f;
                 checksumBefore = -1;
 
                 FrameCamera();
 
-                SetStatus(
-                    $"World rebuilt: {world.Min} -> {world.Max}"
-                );
+                SetStatus($"World rebuilt: {world.Min} -> {world.Max}");
 
                 return world;
             }
@@ -303,27 +317,26 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 return;
             }
 
-            float cx =
-                (world.Min.x + world.Max.x + 1) *
-                0.5f * settings.chunkSize;
+            float cx = (world.Min.x + world.Max.x + 1) * 0.5f * settings.chunkSize;
+            float cz = (world.Min.y + world.Max.y + 1) * 0.5f * settings.chunkSize;
 
-            float cz =
-                (world.Min.y + world.Max.y + 1) *
-                0.5f * settings.chunkSize;
-
-            float span =
-                (world.Max.x - world.Min.x + 1) *
-                settings.chunkSize;
+            float spanX = (world.Max.x - world.Min.x + 1) * settings.chunkSize;
+            float spanZ = (world.Max.y - world.Min.y + 1) * settings.chunkSize;
+            float span = Mathf.Max(spanX, spanZ);
 
             cam.farClipPlane = 10000f;
 
-            cam.transform.position = new Vector3(
-                cx,
-                span * 0.9f,
-                cz - span * 0.6f
-            );
+            var orbit = cam.GetComponent<RuntimeWorldBuilder.Runtime.Features.OrbitCameraController>();
+            if (orbit != null)
+            {
+                // north (+Z) up the screen, tilted, whole terrain in view
+                orbit.FocusOn(new Vector3(cx, settings.maxHeight * 0.15f, cz), span);
+                return;
+            }
 
-            cam.transform.LookAt(new Vector3(cx, 0, cz));
+            // Fallback without the orbit controller: same north-facing angle
+            cam.transform.position = new Vector3(cx, span * 0.6f, cz - span * 0.85f);
+            cam.transform.LookAt(new Vector3(cx, 0f, cz));
         }
 
         // --------------------------------------------------
@@ -392,6 +405,8 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 return;
 
             world.Extend(left, right, down, up);
+
+            ApplyLayersToGeneratedChunks();
 
             FrameCamera();
             Verify();
@@ -588,7 +603,12 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
             world.DestroyAll();
 
+            // Roads, rivers, lakes and markers are not saved with the world
+            RuntimeWorldBuilder.Runtime.Features.FeatureEvents.RequestClear();
+
             world = loaded;
+
+            ApplyLayersToGeneratedChunks();
 
             ServiceRegistry.Register(world);
 
@@ -597,9 +617,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             editValue = -1f;
             checksumBefore = -1;
 
-            SetStatus(
-                $"Loaded '{slot}' extent {world.Min} -> {world.Max}"
-            );
+            SetStatus($"Loaded '{slot}' extent {world.Min} -> {world.Max}");
 
             RefreshUndoRedoButtons();
         }
@@ -680,5 +698,60 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             ServiceRegistry.UnRegister<TerrainWorld>();
             ServiceRegistry.UnRegister<TerrainSettings>();
         }
+
+
+        /// <summary>
+        /// Stores and applies material layers to every generated terrain chunk.
+        /// </summary>
+        public void ApplyTerrainLayers(TerrainLayer[] layers)
+        {
+            if (layers == null || layers.Length == 0)
+                return;
+
+            runtimeTerrainLayers = layers;
+
+            ApplyLayersToGeneratedChunks();
+        }
+
+        /// <summary>
+        /// Applies the current material layers to all available chunks.
+        /// </summary>
+        public void ApplyLayersToGeneratedChunks()
+        {
+            if (world == null || runtimeTerrainLayers == null ||
+                runtimeTerrainLayers.Length == 0)
+                return;
+
+            int applied = 0;
+
+            for (int z = world.Min.y; z <= world.Max.y; z++)
+            {
+                for (int x = world.Min.x; x <= world.Max.x; x++)
+                {
+                    Vector2Int coordinate = new Vector2Int(x, z);
+
+                    if (!world.TryGetChunk(coordinate, out var chunk))
+                        continue;
+
+                    if (chunk == null || chunk.Terrain == null)
+                        continue;
+
+                    TerrainData data = chunk.Terrain.terrainData;
+
+                    if (data == null)
+                        continue;
+
+                    data.terrainLayers = runtimeTerrainLayers;
+
+                    applied++;
+                }
+            }
+
+            Debug.Log(
+                $"[TerrainWorldTester] Applied {runtimeTerrainLayers.Length} " +
+                $"material layer(s) to {applied} terrain chunks."
+            );
+        }
+
     }
 }

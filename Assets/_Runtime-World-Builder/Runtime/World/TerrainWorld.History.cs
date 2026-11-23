@@ -19,6 +19,7 @@ namespace RuntimeWorldBuilder.Runtime.World
         string pendingLabel;
         Dictionary<Vector2Int, Snap> pendingSnaps;
         List<HeightmapStamp> pendingStamps;
+        List<EditHook> pendingHooks;
 
         public event Action HistoryChanged;
 
@@ -34,6 +35,8 @@ namespace RuntimeWorldBuilder.Runtime.World
             public abstract long Bytes { get; }
             public abstract void Undo(TerrainWorld w);
             public abstract void Redo(TerrainWorld w);
+            /// Called when this step was undone and can never be redone any more (a new edit cleared the redo stack).
+            public virtual void Discard() { }
         }
 
         sealed class Snap
@@ -43,10 +46,24 @@ namespace RuntimeWorldBuilder.Runtime.World
             public bool DirtyBefore, DirtyAfter;
         }
 
+        /// Extra things that belong to an edit (roads, rivers, lakes...). Run when the step is undone / redone / discarded.
+        sealed class EditHook
+        {
+            public Action OnUndo, OnRedo, OnDiscard;
+        }
+
+        static void Run(Action a)
+        {
+            if (a == null) return;
+            try { a(); }
+            catch (Exception e) { Debug.LogException(e); }
+        }
+
         sealed class EditOp : Op
         {
             public readonly List<Snap> Snaps = new();
             public readonly List<HeightmapStamp> AddedStamps = new();
+            public readonly List<EditHook> Hooks = new();
 
             public override long Bytes
             {
@@ -57,12 +74,19 @@ namespace RuntimeWorldBuilder.Runtime.World
             {
                 foreach (var st in AddedStamps) w.stamps.Remove(st);
                 foreach (var sn in Snaps) w.Restore(sn.Coord, sn.Before, sn.DirtyBefore);
+                for (int i = Hooks.Count - 1; i >= 0; i--) Run(Hooks[i].OnUndo);
             }
 
             public override void Redo(TerrainWorld w)
             {
                 foreach (var st in AddedStamps) if (!w.stamps.Contains(st)) w.stamps.Add(st);
                 foreach (var sn in Snaps) w.Restore(sn.Coord, sn.After, sn.DirtyAfter);
+                foreach (var h in Hooks) Run(h.OnRedo);
+            }
+
+            public override void Discard()
+            {
+                foreach (var h in Hooks) Run(h.OnDiscard);
             }
         }
 
@@ -92,6 +116,7 @@ namespace RuntimeWorldBuilder.Runtime.World
             pendingLabel = label;
             pendingSnaps = new Dictionary<Vector2Int, Snap>();
             pendingStamps = new List<HeightmapStamp>();
+            pendingHooks = new List<EditHook>();
         }
 
         /// Snapshot a chunk BEFORE you change its Heights. Safe to call repeatedly.
@@ -104,6 +129,19 @@ namespace RuntimeWorldBuilder.Runtime.World
                 Before = (float[,])d.Heights.Clone(),
                 DirtyBefore = d.Dirty,
             };
+        }
+
+        /// Attach non-terrain results (road / river / lake objects) to the CURRENT edit group.
+        /// Call between BeginEdit and EndEdit. onUndo / onRedo run with the step; onDiscard runs when the
+        /// step was undone and then thrown away, so you can destroy the hidden objects.
+        public void AddEditHook(Action onUndo, Action onRedo, Action onDiscard = null)
+        {
+            if (depth == 0 || pendingHooks == null)
+            {
+                Debug.LogWarning("TerrainWorld.AddEditHook must be called between BeginEdit and EndEdit.");
+                return;
+            }
+            pendingHooks.Add(new EditHook { OnUndo = onUndo, OnRedo = onRedo, OnDiscard = onDiscard });
         }
 
         void NoteStampAdded(HeightmapStamp st) { if (depth > 0) pendingStamps.Add(st); }
@@ -125,9 +163,10 @@ namespace RuntimeWorldBuilder.Runtime.World
                 op.Snaps.Add(sn);
             }
             op.AddedStamps.AddRange(pendingStamps);
-            pendingSnaps = null; pendingStamps = null;
+            op.Hooks.AddRange(pendingHooks);
+            pendingSnaps = null; pendingStamps = null; pendingHooks = null;
 
-            if (op.Snaps.Count == 0 && op.AddedStamps.Count == 0) return;
+            if (op.Snaps.Count == 0 && op.AddedStamps.Count == 0 && op.Hooks.Count == 0) return;
             PushOp(op);
         }
 
@@ -142,10 +181,16 @@ namespace RuntimeWorldBuilder.Runtime.World
 
         void PushOp(Op op)
         {
-            redoStack.Clear();
+            DiscardRedo();
             undoStack.Add(op);
             TrimHistory();
             HistoryChanged?.Invoke();
+        }
+
+        void DiscardRedo()
+        {
+            foreach (var o in redoStack) o.Discard();
+            redoStack.Clear();
         }
 
         void TrimHistory()
@@ -184,10 +229,10 @@ namespace RuntimeWorldBuilder.Runtime.World
 
         public void ClearHistory()
         {
+            DiscardRedo();
             undoStack.Clear();
-            redoStack.Clear();
             depth = 0;
-            pendingSnaps = null; pendingStamps = null;
+            pendingSnaps = null; pendingStamps = null; pendingHooks = null;
             HistoryChanged?.Invoke();
         }
 

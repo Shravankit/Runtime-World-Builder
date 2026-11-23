@@ -332,6 +332,8 @@ namespace RuntimeWorldBuilder.Runtime.World
 
         public bool HasPendingPaint => pendingPaint.Count > 0 || pendingVeg.Count > 0 || vegJob != null;
 
+        public int PendingWorkCount => pendingPaint.Count + pendingVeg.Count + (vegJob != null ? 1 : 0);
+
         /// Call every frame. Paints queued regions, then (once painting is done) fills vegetation
         /// nearest-first in small slices, until the time budget is spent.
         public void Tick(float budgetMs = 4f)

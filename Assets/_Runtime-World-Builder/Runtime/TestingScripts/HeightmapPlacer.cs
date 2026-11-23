@@ -51,6 +51,12 @@ namespace RuntimeWorldBuilder.Runtime.Testing
         public StampBlend CurrentBlend => blend;
         public bool IsAspectLocked => lockAspect;
 
+        /// Set by WorldEditorTool. Stamps / ghost only work while true (Stamp tab).
+        public static bool ToolAllowed { get; set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetToolAllowed() => ToolAllowed = false;
+
         const int N = 48;
         static readonly string[] blendNames = System.Enum.GetNames(typeof(StampBlend));
 
@@ -172,6 +178,11 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
         void Update()
         {
+            if (!ToolAllowed)
+            {
+                if (outline != null) { outline.enabled = false; arrow.enabled = false; ghost.enabled = false; }
+                return;
+            }
             if (!ServiceRegistry.TryResolve<TerrainWorld>(out var world)) return;
 
             if (world.Version != lastVersion) { dirty = true; lastVersion = world.Version; }
@@ -192,6 +203,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+            bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
 
             // ---- rotate ----
             float rotSpeed = shift ? 15f : 60f;
@@ -201,14 +213,14 @@ namespace RuntimeWorldBuilder.Runtime.Testing
             if (Input.GetMouseButton(1)) yaw += Input.GetAxis("Mouse X") * 3f;
             yaw = Mathf.Repeat(yaw, 360f);
 
-            // ---- scale ----
-            float sc = Input.mouseScrollDelta.y;
-            if (sc != 0f)
+            // ---- scale: ONLY the + and - keys (scroll wheel / trackpad = camera zoom) ----
+            // Hold + or -   : both sides | Alt + key : width only | Ctrl + key : length only
+            float f = RuntimeWorldBuilder.Runtime.Features.SizeKeys.Factor(Time.deltaTime);
+            if (f != 1f)
             {
-                float f = 1f + sc * 0.05f;
-                if (shift && !ctrl) size.x *= f;          // width only
-                else if (ctrl && !shift) size.y *= f;     // length only
-                else size *= f;                           // both
+                if (alt && !ctrl) size.x *= f;
+                else if (ctrl && !alt) size.y *= f;
+                else size *= f;
                 size = ClampSize(size);
             }
 
@@ -237,7 +249,6 @@ namespace RuntimeWorldBuilder.Runtime.Testing
                 dirty = false;
             }
 
-            // don't place while right-dragging to rotate
             if (Input.GetMouseButtonDown(0))
             {
                 world.PlaceStamp(MakeStamp(hit.point, tex));
@@ -447,6 +458,7 @@ namespace RuntimeWorldBuilder.Runtime.Testing
 
         void ApplyStampAtCurrentPosition()
         {
+            if (!ToolAllowed) return;
             if (!ServiceRegistry.TryResolve<TerrainWorld>(out var world))
                 return;
 
